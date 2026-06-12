@@ -1,0 +1,21 @@
+# Build artifacts
+build/
+dist/
+.build/
+*.dmg
+
+# Signing material — never commit private keys
+*.p12
+*.pem
+*.cer
+
+# Local-only working notes
+AGENTS.md
+
+# macOS noise
+.DS_Store
+
+# Xcode / SwiftPM user state
+*.xcodeproj
+xcuserdata/
+.swiftpm/
