@@ -59,9 +59,18 @@ final class AppUninstaller: ObservableObject {
     /// Reads an app bundle and starts scanning for its leftovers.
     func select(appURL: URL) {
         guard let bundle = Bundle(url: appURL) else { return }
-        let bundleID = bundle.bundleIdentifier
+        // System apps are SIP-protected and their support data is live OS
+        // state; removing either would be wrong, so refuse the selection.
+        guard !appURL.standardizedFileURL.path.hasPrefix("/System") else { return }
+        // The bundle id and name become path components of the scan. Reject
+        // values that could traverse out of the scanned roots (a hostile
+        // Info.plist could otherwise make user folders look like leftovers).
+        let bundleID = bundle.bundleIdentifier.flatMap { id in
+            id.contains("/") || id.contains("..") ? nil : id
+        }
         var name = FileManager.default.displayName(atPath: appURL.path)
         if name.hasSuffix(".app") { name.removeLast(4) }
+        if name.contains("/") || name.contains("..") { name = "" }
         let icon = NSWorkspace.shared.icon(forFile: appURL.path)
 
         target = Target(name: name, bundleID: bundleID, url: appURL, icon: icon)
@@ -109,15 +118,32 @@ final class AppUninstaller: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.3) { [weak self] in
             let fm = FileManager.default
             var freed: Int64 = 0
-            var failed = 0
+            var stubborn: [Leftover] = []
             for item in chosen {
                 do {
                     try fm.trashItem(at: item.url, resultingItemURL: nil)
                     freed += item.size
                 } catch {
-                    failed += 1
+                    stubborn.append(item)
                 }
             }
+
+            // Items we lack rights for (root-owned apps, /Library files) go
+            // through Finder, which shows the administrator prompt and moves
+            // them to the Trash exactly like a drag would. One batch, one
+            // prompt; afterwards whatever still exists counts as failed.
+            var failed = 0
+            if !stubborn.isEmpty {
+                Self.trashViaFinder(stubborn.map(\.url))
+                for item in stubborn {
+                    if fm.fileExists(atPath: item.url.path) {
+                        failed += 1
+                    } else {
+                        freed += item.size
+                    }
+                }
+            }
+
             DispatchQueue.main.async {
                 // The user may have dismissed the flow while files moved.
                 guard let self, self.phase == .removing else { return }
@@ -125,6 +151,22 @@ final class AppUninstaller: ObservableObject {
                 self.phase = .done(freed: freed, failed: failed)
             }
         }
+    }
+
+    /// Asks Finder to trash `urls` in one batch. Finder owns the privilege
+    /// elevation (the standard administrator prompt) and the result is a
+    /// reversible move to the Trash, never a permanent delete. Waits until the
+    /// user answers the prompt; a cancel simply leaves the items in place.
+    private static func trashViaFinder(_ urls: [URL]) {
+        let list = urls
+            .map { url -> String in
+                let escaped = url.path
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "\"", with: "\\\"")
+                return "POSIX file \"\(escaped)\""
+            }
+            .joined(separator: ", ")
+        _ = Shell.run("/usr/bin/osascript", ["-e", "tell application \"Finder\" to delete {\(list)}"])
     }
 
     // MARK: - Scanning
@@ -170,13 +212,22 @@ final class AppUninstaller: ObservableObject {
             addMatches(in: "/Library/LaunchDaemons", .other) { $0.hasPrefix(id) }
         }
 
-        // Name-based folders (exact match only — fuzzy matching is risky).
-        add("\(lib)/Application Support/\(name)", .support)
-        add("\(lib)/Logs/\(name)", .logs)
-        add("\(lib)/Caches/\(name)", .caches)
+        // Name-based folders, exact match only: fuzzy matching is risky.
+        if !name.isEmpty {
+            add("\(lib)/Application Support/\(name)", .support)
+            add("\(lib)/Logs/\(name)", .logs)
+            add("\(lib)/Caches/\(name)", .caches)
+        }
 
-        let deduped = dedupe(paths)
-        return deduped
+        // Last line of defense: nothing outside the scanned roots (or the app
+        // bundle itself) may ever reach the removal list.
+        let appPath = appURL.standardizedFileURL.path
+        let allowedRoots = ["\(lib)/", "/Library/"]
+        let safe = dedupe(paths).filter { url, _ in
+            let path = url.standardizedFileURL.path
+            return path == appPath || allowedRoots.contains { path.hasPrefix($0) && path != $0 }
+        }
+        return safe
             .map { Leftover(url: $0.0, category: $0.1, size: directorySize(of: $0.0, fm: fm)) }
             .sorted { ($0.category.sortRank, -$0.size) < ($1.category.sortRank, -$1.size) }
     }

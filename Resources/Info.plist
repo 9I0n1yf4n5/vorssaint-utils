@@ -29,7 +29,7 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>O Vorssaint Utils controla o Finder e os navegadores: o Finder para mover arquivos recortados e os navegadores para listar e ativar abas no alternador.</string>
+	<string>O Vorssaint Utils controla o Finder (mover arquivos recortados e enviar itens à Lixeira no desinstalador) e os navegadores (listar e ativar abas no alternador).</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Vorssaint Utils intercepta o áudio de apps individuais apenas para ajustar o volume de cada um no mixer. Nada é gravado nem sai do seu Mac.</string>
 	<key>NSHumanReadableCopyright</key>
