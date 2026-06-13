@@ -23,6 +23,7 @@ final class Permissions: ObservableObject {
         let timer = Timer(timeInterval: 2.5, repeats: true) { [weak self] _ in
             self?.refresh()
         }
+        timer.tolerance = 1
         RunLoop.main.add(timer, forMode: .common)
     }
 

@@ -71,7 +71,8 @@ final class AutoQuitService: ObservableObject {
         if let terminateToken { center.removeObserver(terminateToken) }
         launchToken = nil
         terminateToken = nil
-        for pid in observers.keys { detach(pid: pid) }
+        // Snapshot the keys — detach(pid:) mutates the dictionary.
+        for pid in Array(observers.keys) { detach(pid: pid) }
         observers.removeAll()
         hadWindows.removeAll()
     }

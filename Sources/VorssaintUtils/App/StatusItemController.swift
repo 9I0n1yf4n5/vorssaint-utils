@@ -31,6 +31,7 @@ final class StatusItemController {
         titleTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.refresh()
         }
+        titleTimer?.tolerance = 5
     }
 
     private func bind() {

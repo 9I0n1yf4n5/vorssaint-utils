@@ -187,7 +187,7 @@ final class AppSwitcher: ObservableObject {
 
         windows = list
         sessionStartItemID = currentItemID(in: list)
-        grid = SwitcherGrid.compute(count: list.count, on: screenWithMouse())
+        grid = SwitcherGrid.compute(count: list.count, on: NSScreen.withMouse)
         previews = Dictionary(uniqueKeysWithValues: list.compactMap { item in
             item.previewWindowID.flatMap { id in
                 WindowPreviewProvider.shared.cachedPreview(for: id).map { (id, $0) }
@@ -277,7 +277,7 @@ final class AppSwitcher: ObservableObject {
         } else {
             selectedIndex = merged.count > 1 ? 1 : 0
         }
-        grid = SwitcherGrid.compute(count: merged.count, on: screenWithMouse())
+        grid = SwitcherGrid.compute(count: merged.count, on: NSScreen.withMouse)
         resizePanel()
         WindowPreviewProvider.shared.refreshPreviews(for: merged) { [weak self] windowID, image in
             self?.previews[windowID] = image
@@ -326,7 +326,7 @@ final class AppSwitcher: ObservableObject {
             return
         }
         selectedIndex = min(max(0, selectedIndex - removedBeforeSelection), windows.count - 1)
-        grid = SwitcherGrid.compute(count: windows.count, on: screenWithMouse())
+        grid = SwitcherGrid.compute(count: windows.count, on: NSScreen.withMouse)
         resizePanel()
     }
 
@@ -397,7 +397,7 @@ final class AppSwitcher: ObservableObject {
     }
 
     private func centeredFrame(for size: CGSize) -> NSRect {
-        let screen = screenWithMouse().visibleFrame
+        let screen = NSScreen.withMouse.visibleFrame
         return NSRect(x: screen.midX - size.width / 2,
                       y: screen.midY - size.height / 2,
                       width: size.width,
@@ -421,11 +421,6 @@ final class AppSwitcher: ObservableObject {
         panel.contentViewController = NSHostingController(rootView: SwitcherView().environmentObject(self))
         self.panel = panel
         return panel
-    }
-
-    private func screenWithMouse() -> NSScreen {
-        let mouse = NSEvent.mouseLocation
-        return NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main ?? NSScreen.screens[0]
     }
 }
 

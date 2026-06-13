@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// Per-app volume sliders — the mixer macOS never shipped. Shows every app
-/// currently producing sound; dragging below 100% routes that app through a
-/// gain stage, and 100% restores untouched passthrough.
+/// holding an audio connection (a green dot marks the ones playing right now);
+/// dragging below 100% routes that app through a gain stage, and 100% restores
+/// untouched passthrough.
 struct MixerSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var mixer = AppVolumeMixer.shared

@@ -59,6 +59,7 @@ final class SystemMonitor: ObservableObject {
         let t = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
             self?.refresh()
         }
+        t.tolerance = 0.3
         RunLoop.main.add(t, forMode: .common)
         timer = t
     }

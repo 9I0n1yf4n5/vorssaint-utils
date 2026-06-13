@@ -18,7 +18,7 @@ struct SwitcherView: View {
             }
         }
         .padding(SwitcherGrid.padding)
-        .background(PanelBackdrop())
+        .background(HUDBackdrop())
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -135,17 +135,4 @@ private struct WindowCard: View {
         .scaleEffect(isSelected ? 1.0 : 0.97)
         .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isSelected)
     }
-}
-
-/// Translucent HUD material behind the cards.
-private struct PanelBackdrop: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .hudWindow
-        view.blendingMode = .behindWindow
-        view.state = .active
-        return view
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }

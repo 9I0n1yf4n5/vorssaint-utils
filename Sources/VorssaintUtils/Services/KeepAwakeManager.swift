@@ -241,6 +241,7 @@ final class KeepAwakeManager: ObservableObject {
         let t = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
             self?.checkBattery()
         }
+        t.tolerance = 5
         RunLoop.main.add(t, forMode: .common)
         batteryTimer = t
         checkBattery()
