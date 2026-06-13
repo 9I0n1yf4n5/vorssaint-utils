@@ -53,6 +53,7 @@ final class UpdateService: ObservableObject {
         let timer = Timer(timeInterval: 60 * 60 * 24, repeats: true) { [weak self] _ in
             self?.check(manual: false)
         }
+        timer.tolerance = 60 * 60
         RunLoop.main.add(timer, forMode: .common)
         dailyTimer = timer
     }
@@ -141,11 +142,18 @@ final class UpdateService: ObservableObject {
         /usr/bin/hdiutil attach "$DMG" -nobrowse -quiet -mountpoint "$MNT" || exit 1
         SRC="$(/usr/bin/find "$MNT" -maxdepth 1 -name '*.app' -print -quit)"
         if [ -n "$SRC" ]; then
-            /bin/rm -rf "$APP"
-            /usr/bin/ditto "$SRC" "$APP"
-            # Clear ALL xattrs (quarantine + FinderInfo the DMG round-trip adds):
-            # FinderInfo breaks the code signature's strict verification.
-            /usr/bin/xattr -cr "$APP" 2>/dev/null
+            # Stage the full copy FIRST; the old app is only removed after the
+            # copy completed — a failure mid-copy must never leave the user
+            # with no app at all.
+            STAGE="$APP.update-new"
+            /bin/rm -rf "$STAGE"
+            if /usr/bin/ditto "$SRC" "$STAGE"; then
+                # Clear ALL xattrs (quarantine + FinderInfo the DMG round-trip
+                # adds): FinderInfo breaks strict signature verification.
+                /usr/bin/xattr -cr "$STAGE" 2>/dev/null
+                /bin/rm -rf "$APP" && /bin/mv "$STAGE" "$APP"
+            fi
+            /bin/rm -rf "$STAGE"
         fi
         /usr/bin/hdiutil detach "$MNT" -quiet 2>/dev/null
         /bin/rm -f "$DMG"
