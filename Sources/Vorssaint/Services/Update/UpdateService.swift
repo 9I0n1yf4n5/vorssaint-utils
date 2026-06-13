@@ -68,7 +68,7 @@ final class UpdateService: ObservableObject {
 
         var request = URLRequest(url: URL(string: "https://api.github.com/repos/\(repository)/releases/latest")!)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("VorssaintUtils/\(AppInfo.version)", forHTTPHeaderField: "User-Agent")
+        request.setValue("Vorssaint/\(AppInfo.version)", forHTTPHeaderField: "User-Agent")
         request.cachePolicy = .reloadIgnoringLocalCacheData
 
         URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
@@ -112,7 +112,7 @@ final class UpdateService: ObservableObject {
             }
             // Move out of the URL session's scratch space before handing off.
             let dmgURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("VorssaintUtils-update.dmg")
+                .appendingPathComponent("Vorssaint-update.dmg")
             try? FileManager.default.removeItem(at: dmgURL)
             do {
                 try FileManager.default.moveItem(at: tempURL, to: dmgURL)
@@ -139,25 +139,36 @@ final class UpdateService: ObservableObject {
         APP="$1"; DMG="$2"; PID="$3"
         while kill -0 "$PID" 2>/dev/null; do sleep 0.3; done
         MNT="$(/usr/bin/mktemp -d)"
-        /usr/bin/hdiutil attach "$DMG" -nobrowse -quiet -mountpoint "$MNT" || exit 1
+        /usr/bin/hdiutil attach "$DMG" -nobrowse -quiet -mountpoint "$MNT" || { /usr/bin/open "$APP"; exit 1; }
         SRC="$(/usr/bin/find "$MNT" -maxdepth 1 -name '*.app' -print -quit)"
+        LAUNCH="$APP"
         if [ -n "$SRC" ]; then
+            # Install under the name the DMG ships, in the same folder. A rebrand
+            # changes the bundle filename, so this renames it on disk too; a plain
+            # update keeps the same name and replaces it in place.
+            DEST="$(/usr/bin/dirname "$APP")/$(/usr/bin/basename "$SRC")"
             # Stage the full copy FIRST; the old app is only removed after the
-            # copy completed — a failure mid-copy must never leave the user
-            # with no app at all.
-            STAGE="$APP.update-new"
+            # copy completed, so a failure mid-copy never leaves the user with no
+            # app at all.
+            STAGE="$DEST.update-new"
             /bin/rm -rf "$STAGE"
             if /usr/bin/ditto "$SRC" "$STAGE"; then
                 # Clear ALL xattrs (quarantine + FinderInfo the DMG round-trip
                 # adds): FinderInfo breaks strict signature verification.
                 /usr/bin/xattr -cr "$STAGE" 2>/dev/null
-                /bin/rm -rf "$APP" && /bin/mv "$STAGE" "$APP"
+                if /bin/rm -rf "$DEST" && /bin/mv "$STAGE" "$DEST"; then
+                    LAUNCH="$DEST"
+                    # If the bundle was renamed, remove the old-named one. The
+                    # bundle id is unchanged, so macOS keeps every granted
+                    # permission for the new bundle.
+                    [ "$DEST" != "$APP" ] && /bin/rm -rf "$APP"
+                fi
             fi
             /bin/rm -rf "$STAGE"
         fi
         /usr/bin/hdiutil detach "$MNT" -quiet 2>/dev/null
         /bin/rm -f "$DMG"
-        /usr/bin/open "$APP"
+        /usr/bin/open "$LAUNCH"
         """
         let scriptURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("vorssaint-update.sh")

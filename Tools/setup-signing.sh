@@ -4,6 +4,12 @@
 # build the same code signature — so macOS keeps granted permissions
 # (Accessibility, Screen Recording) across updates instead of re-prompting.
 #
+# This identity name keeps its original "Vorssaint Utils Signing" on purpose: it
+# is the lookup key build.sh matches, and the released app's designated
+# requirement is pinned to this exact certificate. Renaming it would change that
+# requirement and drop every user's granted permissions. The name lives only in
+# the keychain and codesign output, never in anything the app shows.
+#
 # Free, offline, and idempotent (re-running is a no-op once the identity exists).
 # It does NOT replace Apple notarization: downloaded builds still show Gatekeeper's
 # "unverified developer" prompt on first launch. It only stabilizes the identity.

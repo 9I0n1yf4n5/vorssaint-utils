@@ -22,7 +22,7 @@ jobs:
         run: ./build.sh
 
       - name: Selftest
-        run: ./build/VorssaintUtils --selftest
+        run: ./build/Vorssaint --selftest
 
       - name: Package DMG
         run: ./Tools/make-dmg.sh
@@ -30,6 +30,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: VorssaintUtils-dmg
+          name: Vorssaint-dmg
           path: dist/*.dmg
           if-no-files-found: error

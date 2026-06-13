@@ -76,7 +76,7 @@ abra e arraste o **Vorssaint** para **Aplicativos**.
 >
 > - Abra **Ajustes do Sistema › Privacidade e Segurança**, role até **Segurança**
 >   e clique em **Abrir Mesmo Assim** ao lado do Vorssaint.
-> - Ou, no Terminal: `xattr -dr com.apple.quarantine "/Applications/Vorssaint Utils.app"`
+> - Ou, no Terminal: `xattr -dr com.apple.quarantine "/Applications/Vorssaint.app"`
 >
 > Atualizações instaladas de dentro do app não mostram isso, e a assinatura
 > estável mantém as permissões concedidas entre as atualizações.

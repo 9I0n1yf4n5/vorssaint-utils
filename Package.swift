@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "VorssaintUtils",
+    name: "Vorssaint",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "VorssaintUtils",
-            path: "Sources/VorssaintUtils"
+            name: "Vorssaint",
+            path: "Sources/Vorssaint"
         )
     ]
 )

@@ -79,7 +79,7 @@ open it and drag **Vorssaint** into **Applications**.
 >
 > - Open **System Settings › Privacy & Security**, scroll to **Security**, and
 >   click **Open Anyway** next to Vorssaint.
-> - Or, in Terminal: `xattr -dr com.apple.quarantine "/Applications/Vorssaint Utils.app"`
+> - Or, in Terminal: `xattr -dr com.apple.quarantine "/Applications/Vorssaint.app"`
 >
 > Updates installed from inside the app don't show this, and a stable signing
 > identity keeps your granted permissions across updates.
@@ -130,7 +130,7 @@ its permissions.
 ## Architecture
 
 ```
-Sources/VorssaintUtils/
+Sources/Vorssaint/
 ├── main.swift                  # entry point (--selftest, --sensors)
 ├── App/                        # AppDelegate, menu bar status item
 ├── Core/                       # localization (pt-BR/en-US), permissions, defaults

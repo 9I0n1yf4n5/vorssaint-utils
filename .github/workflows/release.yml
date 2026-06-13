@@ -24,7 +24,7 @@ jobs:
         run: ./build.sh
 
       - name: Selftest
-        run: ./build/VorssaintUtils --selftest
+        run: ./build/Vorssaint --selftest
 
       - name: Package DMG
         run: ./Tools/make-dmg.sh
@@ -43,4 +43,4 @@ jobs:
 
             - **System Settings › Privacy & Security**, scroll to **Security**,
               then click **Open Anyway**.
-            - Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/Vorssaint Utils.app"`
+            - Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/Vorssaint.app"`

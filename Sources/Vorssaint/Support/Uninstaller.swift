@@ -1,7 +1,7 @@
 import Foundation
 import ServiceManagement
 
-/// `VorssaintUtils --uninstall`: cleanly detaches the app from the system
+/// `Vorssaint --uninstall`: cleanly detaches the app from the system
 /// before its bundle is removed. It unregisters the login item — so no dead
 /// entry lingers in System Settings › General › Login Items — and restores
 /// normal sleep if a closed-lid session left it disabled.

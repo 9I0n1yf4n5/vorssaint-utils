@@ -1,4 +1,4 @@
-# Contributing to Vorssaint Utils
+# Contributing to Vorssaint
 
 Thanks for the interest! This project aims to stay small, native and readable.
 
@@ -7,9 +7,9 @@ Thanks for the interest! This project aims to stay small, native and readable.
 ```sh
 git clone https://github.com/vorssaint/vorssaint-utils.git
 cd vorssaint-utils
-./build.sh                              # build + assemble the bundle
-./build/VorssaintUtils --selftest       # quick health check (SELFTEST OK)
-./build.sh --install                    # install into /Applications and launch
+./build.sh                         # build + assemble the bundle
+./build/Vorssaint --selftest       # quick health check (SELFTEST OK)
+./build.sh --install               # install into /Applications and launch
 ```
 
 Requirements: macOS 14+, Apple Silicon, Xcode Command Line Tools. The build is
@@ -26,10 +26,14 @@ macOS re-prompts for Accessibility/Screen Recording after each rebuild. Run
 ./Tools/setup-signing.sh
 ```
 
-once to create a free, self-signed identity (`Vorssaint Utils Signing`) in a
-dedicated keychain. `build.sh` then signs with it automatically, giving the
-bundle a constant designated requirement so granted permissions persist across
-your local builds. It does not affect Gatekeeper (still unnotarized). Official
+once to create a free, self-signed identity in a dedicated keychain. `build.sh`
+then signs with it automatically, giving the bundle a constant designated
+requirement so granted permissions persist across your local builds. (The
+identity keeps its original name, `Vorssaint Utils Signing`: it is the fixed
+lookup key `build.sh` matches, and the released app's designated requirement is
+pinned to that certificate. Renaming it would change the requirement and drop
+every user's granted permissions, so it stays as is. It is never shown outside
+the keychain.) It does not affect Gatekeeper (still unnotarized). Official
 releases are signed in CI with a shared certificate held in the repo secrets
 `SIGNING_CERT_P12` / `SIGNING_CERT_PASSWORD`.
 
@@ -37,11 +41,11 @@ releases are signed in CI with a shared certificate held in the repo secrets
 
 | Folder | Role |
 |---|---|
-| `Sources/VorssaintUtils/App` | App lifecycle and the menu bar status item |
-| `Sources/VorssaintUtils/Core` | Localization, permissions, UserDefaults keys |
-| `Sources/VorssaintUtils/Services` | All behavior: energy, monitor, scroll, switcher |
-| `Sources/VorssaintUtils/UI` | SwiftUI views only — no business logic |
-| `Sources/VorssaintUtils/Support` | `--selftest` and `--sensors` diagnostics |
+| `Sources/Vorssaint/App` | App lifecycle and the menu bar status item |
+| `Sources/Vorssaint/Core` | Localization, permissions, UserDefaults keys |
+| `Sources/Vorssaint/Services` | All behavior: energy, monitor, scroll, switcher |
+| `Sources/Vorssaint/UI` | SwiftUI views only — no business logic |
+| `Sources/Vorssaint/Support` | `--selftest` and `--sensors` diagnostics |
 | `Tools` | Icon generator and DMG packaging |
 
 Conventions:
@@ -67,7 +71,7 @@ CPU = `Tp…`/`Te…`, GPU = `Tg…`, battery = `TB0T…TB2T`. If a new Apple Si
 generation renames keys, run:
 
 ```sh
-./build/VorssaintUtils --sensors
+./build/Vorssaint --sensors
 ```
 
 and open a PR with the dump and the adjusted prefixes.

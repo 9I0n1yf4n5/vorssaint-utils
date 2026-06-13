@@ -16,6 +16,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
+        // Retire any leftover pre-rename "Vorssaint Utils.app" (same bundle id,
+        // so granted permissions stay with the new bundle). No-op once clean.
+        BundleMigration.cleanUpLegacyBundles()
+
         statusController = StatusItemController()
         statusController.onLeftClick = { [weak self] in self?.togglePopover() }
         statusController.onRightClick = { [weak self] in self?.showContextMenu() }

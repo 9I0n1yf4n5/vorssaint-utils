@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.5.0] - 2026-06-13
+
+### Changed
+- **The app is now "Vorssaint" everywhere the system shows it.** The app file is
+  renamed to `Vorssaint.app` and its executable to `Vorssaint`, so Spotlight, the
+  Applications list, Login Items, notifications, the permission panes and system
+  dialogs all read "Vorssaint", with no trace of the old name
+- Internal names follow suit (the audio mixer device, the closed-lid rule file,
+  the diagnostics binary) and the source tree moved to `Sources/Vorssaint`
+
+### Migration
+- **Updating keeps your permissions, settings and data, with nothing to do.** The
+  bundle identifier is unchanged, so every granted permission (Accessibility,
+  Screen Recording, Full Disk Access, Automation), your preferences and the login
+  item carry over untouched. The update installs `Vorssaint.app` and removes the
+  old `Vorssaint Utils.app`; if a copy is ever left behind (for example after a
+  manual install), the app moves it to the Trash on its next launch. The
+  closed-lid rule file is renamed the next time that toggle is used
+
 ## [2.4.7] - 2026-06-13
 
 ### Changed

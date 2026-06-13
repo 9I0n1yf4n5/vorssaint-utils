@@ -1,11 +1,11 @@
 #!/bin/zsh
 # Packages the built app into a styled, distributable DMG
-# (dist/VorssaintUtils-<version>.dmg): a window with the app icon, an arrow and
+# (dist/Vorssaint-<version>.dmg): a window with the app icon, an arrow and
 # the Applications folder for drag-and-drop install. Run ./build.sh first.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="Vorssaint Utils"
+APP_NAME="Vorssaint"
 APP="build/stage/$APP_NAME.app"
 VOLUME="$APP_NAME"
 
@@ -15,7 +15,7 @@ if [[ ! -d "$APP" ]]; then
 fi
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")"
-OUT="dist/VorssaintUtils-$VERSION.dmg"
+OUT="dist/Vorssaint-$VERSION.dmg"
 
 echo "▸ Rendering installer background…"
 swift Tools/MakeDMGBackground.swift build/dmg-background.png

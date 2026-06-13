@@ -33,7 +33,7 @@ NSGradient(colors: [
 ])?.draw(in: full, angle: -90)
 
 // Title (origin is bottom-left, so high y = near the top).
-let title = "Vorssaint Utils"
+let title = "Vorssaint"
 let titleAttrs: [NSAttributedString.Key: Any] = [
     .font: NSFont.systemFont(ofSize: 26, weight: .bold),
     .foregroundColor: NSColor(calibratedWhite: 0.12, alpha: 1),

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds Vorssaint Utils, assembles the .app bundle, signs it and (with --install)
+# Builds Vorssaint, assembles the .app bundle, signs it and (with --install)
 # installs it into /Applications.
 #
 # The bundle is staged in a temporary directory outside ~/Documents: folders synced
@@ -7,8 +7,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP_NAME="Vorssaint Utils"
-EXECUTABLE="VorssaintUtils"
+APP_NAME="Vorssaint"
+EXECUTABLE="Vorssaint"
 TARGET="arm64-apple-macosx14.0"
 
 # Prefer the macOS 26 SDK when present: the 27 SDK turns SwiftUI property wrappers
@@ -24,7 +24,7 @@ echo "▸ Compiling (release) against $(basename "$SDK")…"
 rm -rf build
 mkdir -p build
 swiftc -O -target "$TARGET" -sdk "$SDK" \
-    Sources/VorssaintUtils/**/*.swift \
+    Sources/Vorssaint/**/*.swift \
     -o "build/$EXECUTABLE"
 
 echo "▸ Generating app icon…"
@@ -45,6 +45,11 @@ xattr -cr "$STAGE"
 # keeps granted permissions (Accessibility, Screen Recording) across updates —
 # ad-hoc signing changes the cdhash every build and silently drops them.
 # Falls back to ad-hoc on a fresh clone without the identity.
+#
+# The name stays "Vorssaint Utils Signing" deliberately: the released app's
+# designated requirement is pinned to this certificate, so renaming it would
+# drop every user's permissions. It is the one pre-rename name kept on purpose,
+# and it is never shown outside the keychain.
 SIGN_IDENTITY="Vorssaint Utils Signing"
 if security find-identity -p codesigning 2>/dev/null | grep -q "$SIGN_IDENTITY"; then
     echo "  signing with stable identity: $SIGN_IDENTITY"
@@ -63,12 +68,16 @@ echo "✓ Bundle ready: build/stage/$APP_NAME.app"
 if [[ "${1:-}" == "--install" ]]; then
     echo "▸ Installing into /Applications…"
     pkill -x "$EXECUTABLE" 2>/dev/null || true
-    # Remove the pre-rename app so two menu bar items never coexist.
-    if [[ -d "/Applications/Vorss.app" ]]; then
-        pkill -x "Vorss" 2>/dev/null || true
-        rm -rf "/Applications/Vorss.app"
-        echo "  (legacy Vorss.app removed)"
-    fi
+    # Remove the pre-rename apps so two menu bar items never coexist. Same bundle
+    # id, so macOS keeps the granted permissions for the new bundle.
+    for legacy in "Vorss:Vorss" "Vorssaint Utils:VorssaintUtils"; do
+        name="${legacy%%:*}"; proc="${legacy##*:}"
+        if [[ -d "/Applications/$name.app" ]]; then
+            pkill -x "$proc" 2>/dev/null || true
+            rm -rf "/Applications/$name.app"
+            echo "  (legacy $name.app removed)"
+        fi
+    done
     sleep 0.5
     rm -rf "/Applications/$APP_NAME.app"
     ditto "$STAGE" "/Applications/$APP_NAME.app"
