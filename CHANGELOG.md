@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.9.1] - 2026-06-14
+
+### Changed
+- The switcher's grouping option now shows **one entry per app**, collapsing all
+  of an app's windows into a single entry instead of one per window. Turn it on
+  for an app-level switcher rather than a window-level one.
+
 ## [2.9.0] - 2026-06-14
 
 ### Added

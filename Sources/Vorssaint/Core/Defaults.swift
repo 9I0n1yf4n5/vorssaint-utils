@@ -14,7 +14,7 @@ enum DefaultsKey {
     static let sleepDisabledFlag = "vorssDisabledSleep"   // internal guard for pmset disablesleep
     static let scrollInverterEnabled = "scrollInverterEnabled"
     static let switcherEnabled = "switcherEnabled"
-    static let switcherMergeTabs = "switcherMergeTabs"     // collapse an app's same-frame tab windows into one entry
+    static let switcherMergeTabs = "switcherMergeTabs"     // show one switcher entry per app (collapse all of an app's windows)
     static let autoCheckUpdates = "autoCheckUpdates"
     static let appVolumes = "appVolumes"                  // [bundle id: 0...1]
     static let finderCutPasteEnabled = "finderCutPasteEnabled"
