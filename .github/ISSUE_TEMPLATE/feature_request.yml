@@ -36,7 +36,7 @@ body:
       options:
         - Keep Awake
         - System Monitor
-        - Menu Behavior
+        - Menu Bar
         - Volume Mixer
         - Window Switcher
         - Other
