@@ -4,20 +4,39 @@ import Foundation
 /// Languages the interface can use. The first launch defaults to the system
 /// language; the onboarding and Settings let the user override it at any time.
 enum AppLanguage: String, CaseIterable, Identifiable {
-    case ptBR = "pt-BR"
     case enUS = "en-US"
+    case ptBR = "pt-BR"
+    case es = "es"
+    case de = "de"
+    case fr = "fr"
+    case it = "it"
+    case ja = "ja"
+    case zhHans = "zh-Hans"
 
     var id: String { rawValue }
 
+    /// The language's own name, shown in its own script, the way macOS lists them.
     var displayName: String {
         switch self {
-        case .ptBR: return "Português (Brasil)"
         case .enUS: return "English (US)"
+        case .ptBR: return "Português (Brasil)"
+        case .es: return "Español"
+        case .de: return "Deutsch"
+        case .fr: return "Français"
+        case .it: return "Italiano"
+        case .ja: return "日本語"
+        case .zhHans: return "简体中文"
         }
     }
 
     static var systemDefault: AppLanguage {
-        Locale.preferredLanguages.first?.hasPrefix("pt") == true ? .ptBR : .enUS
+        let preferred = Locale.preferredLanguages.first ?? "en"
+        let matches: [(String, AppLanguage)] = [
+            ("pt", .ptBR), ("es", .es), ("de", .de), ("fr", .fr),
+            ("it", .it), ("ja", .ja), ("zh", .zhHans),
+        ]
+        for (prefix, language) in matches where preferred.hasPrefix(prefix) { return language }
+        return .enUS
     }
 }
 
@@ -30,7 +49,18 @@ final class L10n: ObservableObject {
         didSet { UserDefaults.standard.set(language.rawValue, forKey: DefaultsKey.language) }
     }
 
-    var s: Strings { language == .ptBR ? .ptBR : .enUS }
+    var s: Strings {
+        switch language {
+        case .enUS: return .enUS
+        case .ptBR: return .ptBR
+        case .es: return .es
+        case .de: return .de
+        case .fr: return .fr
+        case .it: return .it
+        case .ja: return .ja
+        case .zhHans: return .zhHans
+        }
+    }
 
     private init() {
         if let raw = UserDefaults.standard.string(forKey: DefaultsKey.language),

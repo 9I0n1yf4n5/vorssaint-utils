@@ -9,6 +9,9 @@
 
 *Leia em [Português (Brasil)](docs/README.pt-BR.md).*
 
+<p align="center">🇺🇸 🇧🇷 🇪🇸 🇩🇪 🇫🇷 🇮🇹 🇯🇵 🇨🇳</p>
+<p align="center"><sub>The interface speaks 8 languages, switchable anytime in Settings.</sub></p>
+
 If Vorssaint is useful to you, a quick ⭐ means a lot and helps others find the project. It is, and always will be, 100% free with no subscription; community support is what keeps it alive, so if you'd like to chip in you can [buy me a coffee](https://buymeacoffee.com/vorssaint) ☕.
 
 One small menu bar app that does the jobs you'd otherwise buy a handful of

@@ -4,6 +4,9 @@
 
 *Read in [English](../README.md).*
 
+<p align="center">🇺🇸 🇧🇷 🇪🇸 🇩🇪 🇫🇷 🇮🇹 🇯🇵 🇨🇳</p>
+<p align="center"><sub>A interface fala 8 idiomas, troque quando quiser nos Ajustes.</sub></p>
+
 Se o Vorssaint te ajuda, uma ⭐ rápida significa muito e ainda ajuda mais gente a encontrar o projeto. Ele é, e sempre será, 100% gratuito e sem assinatura; o apoio da comunidade é o que mantém tudo vivo, então se quiser ajudar você também pode [me pagar um café](https://buymeacoffee.com/vorssaint) ☕.
 
 Um app pequeno na barra de menus que faz o trabalho para o qual você instalaria

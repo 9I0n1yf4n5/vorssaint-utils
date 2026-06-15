@@ -166,7 +166,9 @@ private struct WelcomeStep: View {
                         Text(language.displayName).tag(language)
                     }
                 }
-                .pickerStyle(.segmented)
+                // A menu (not segmented): with eight languages a segmented control
+                // would overflow, and several names are in their own script.
+                .pickerStyle(.menu)
 
                 featureRow(icon: "bolt.fill",
                            title: l10n.s.obWelcomeBullet1Title,
