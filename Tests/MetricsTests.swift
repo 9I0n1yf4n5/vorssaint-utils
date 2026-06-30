@@ -138,11 +138,16 @@ struct MetricsTests {
                "clipboard shortcut hint exposes multi-selection in Portuguese")
         expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("Option+Delete"),
                "clipboard shortcut hint exposes delete keyboard action in English")
+        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("Option+P"),
+               "clipboard shortcut hint exposes pin keyboard action in Turkish")
         expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("Cmd-click"),
                "clipboard shortcut hint exposes multi-selection in English")
+        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("Cmd-tıklama"),
+               "clipboard shortcut hint exposes multi-selection in Turkish")
         let featureTitles: [(AppLanguage, String, String, String, String)] = [
             (.enUS, "Clipboard", "Window layout", "Utilities", "Alerts"),
             (.ptBR, "Clipboard", "Layout de janelas", "Utilitários", "Alertas"),
+            (.tr, "Pano", "Pencere yerleşimi", "Araçlar", "Uyarılar"),
             (.es, "Portapapeles", "Diseño de ventanas", "Utilidades", "Alertas"),
             (.de, "Zwischenablage", "Fensterlayout", "Dienstprogramme", "Warnungen"),
             (.fr, "Presse-papiers", "Disposition des fenêtres", "Utilitaires", "Alertes"),
@@ -920,6 +925,8 @@ struct MetricsTests {
                "Media output visibility respects dot-prefixed manual filenames")
         expect(MediaSupport.recognitionLanguages(for: "pt-BR") == ["pt-BR", "en-US"],
                "Media OCR language defaults include the app language and English")
+        expect(MediaSupport.recognitionLanguages(for: "tr") == ["tr-TR", "en-US"],
+               "Media OCR language defaults include Turkish and English")
         expectClose(Defaults.sanitizedAppVolume(1.5), 1.5, "valid app volume is preserved")
         expectClose(Defaults.sanitizedAppVolume(3), 2, "high app volume clamps to boost maximum")
         expectClose(Defaults.sanitizedAppVolume(-1), 0, "negative app volume clamps to mute")
@@ -2015,6 +2022,7 @@ struct MetricsTests {
         let localizedStrings: [(AppLanguage, Strings)] = [
             (.enUS, .enUS),
             (.ptBR, .ptBR),
+            (.tr, .tr),
             (.es, .es),
             (.de, .de),
             (.fr, .fr),
@@ -2085,6 +2093,17 @@ struct MetricsTests {
                 expect(!value.isEmpty && !value.contains("%"), "\(prefix) renders format strings")
             }
         }
+        let infoPlist = NSDictionary(contentsOfFile: "Resources/Info.plist") as? [String: Any]
+        let bundleLocalizations = infoPlist?["CFBundleLocalizations"] as? [String] ?? []
+        expect(bundleLocalizations.contains("tr"), "Info.plist declares Turkish as a bundle localization")
+        let baseAudioPrompt = infoPlist?["NSAudioCaptureUsageDescription"] as? String ?? ""
+        expect(baseAudioPrompt.contains("Vorssaint taps individual app audio"),
+               "base audio permission prompt is an English fallback")
+        let turkishInfoPlistStrings = (try? String(contentsOfFile: "Resources/tr.lproj/InfoPlist.strings",
+                                                   encoding: .utf8)) ?? ""
+        expect(turkishInfoPlistStrings.contains("NSAudioCaptureUsageDescription")
+               && turkishInfoPlistStrings.contains("Hiçbir şey kaydedilmez"),
+               "Turkish InfoPlist.strings localizes the audio permission prompt")
 
         // MARK: Network speed math
 
