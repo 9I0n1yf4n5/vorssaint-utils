@@ -156,6 +156,10 @@ private struct MenuBarMetricOrderEditor: View {
                     }
                     .frame(height: 32)
 
+                    if metric == .network {
+                        NetworkMenuBarOrderOption()
+                    }
+
                     if metric != order.last {
                         Divider()
                     }
@@ -165,6 +169,43 @@ private struct MenuBarMetricOrderEditor: View {
         .padding(.vertical, 2)
         .onAppear { order = MenuBarMetric.order(in: .standard) }
         .onChange(of: metricOrder) { _, _ in order = MenuBarMetric.order(in: .standard) }
+    }
+}
+
+private struct NetworkMenuBarOrderOption: View {
+    @ObservedObject private var l10n = L10n.shared
+    @AppStorage(DefaultsKey.menuBarNetwork) private var menuBarNetwork = false
+    @AppStorage(DefaultsKey.menuBarNetworkUploadFirst) private var uploadFirst = false
+
+    var body: some View {
+        if menuBarNetwork {
+            HStack(spacing: 8) {
+                Text(l10n.s.monitorNetworkUploadFirst)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Button {
+                    uploadFirst.toggle()
+                } label: {
+                    ZStack(alignment: uploadFirst ? .trailing : .leading) {
+                        Capsule()
+                            .fill(uploadFirst ? Color.accentColor : Color.secondary.opacity(0.28))
+                            .frame(width: 28, height: 16)
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 12, height: 12)
+                            .padding(2)
+                    }
+                    .frame(width: 30, height: 20)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(l10n.s.monitorNetworkUploadFirst)
+            }
+            .padding(.leading, 58)
+            .padding(.trailing, 4)
+            .padding(.bottom, 7)
+        }
     }
 }
 

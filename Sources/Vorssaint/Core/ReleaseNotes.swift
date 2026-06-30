@@ -44,6 +44,15 @@ struct ReleaseNotes {
         return body.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    static func inAppUpdateNotes(from releaseBody: String?) -> String? {
+        guard let releaseBody else { return nil }
+        let lines = releaseBody
+            .components(separatedBy: .newlines)
+            .filter { !isDistributionFooter($0) }
+        let cleaned = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? nil : cleaned
+    }
+
     private static func bundledChangelog() -> String? {
         guard let url = Bundle.main.url(forResource: "CHANGELOG", withExtension: "md") else { return nil }
         return try? String(contentsOf: url, encoding: .utf8)
@@ -155,6 +164,11 @@ struct ReleaseNotes {
     private static func shouldDisplaySection(_ title: String) -> Bool {
         let normalized = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return normalized != "website" && normalized != "links"
+    }
+
+    private static func isDistributionFooter(_ line: String) -> Bool {
+        let normalized = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        return normalized == "Signed with an Apple Developer ID and notarized by Apple, so it downloads and opens normally. Requires macOS 14 or later. Open the .dmg below and drag Vorssaint to Applications."
     }
 }
 

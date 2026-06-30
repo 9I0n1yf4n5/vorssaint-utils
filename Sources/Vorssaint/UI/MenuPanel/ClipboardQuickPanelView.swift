@@ -7,6 +7,7 @@ struct ClipboardQuickPanelView: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var history = ClipboardHistoryService.shared
     @FocusState private var searchFocused: Bool
+    @State private var hoveredEntryID: UUID?
 
     private var text: ClipboardFeatureStrings {
         FeatureStrings.clipboard(l10n.language)
@@ -31,7 +32,14 @@ struct ClipboardQuickPanelView: View {
         .frame(width: 520, height: 560, alignment: .topLeading)
         .background(.regularMaterial)
         .onAppear {
+            hoveredEntryID = nil
             DispatchQueue.main.async { searchFocused = true }
+        }
+        .onDisappear {
+            hoveredEntryID = nil
+        }
+        .onChange(of: history.quickWindowPresentationID) { _, _ in
+            hoveredEntryID = nil
         }
     }
 
@@ -41,13 +49,14 @@ struct ClipboardQuickPanelView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 24)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(text.title)
                     .font(.system(size: 15, weight: .bold))
                 Text(text.shortcutHint)
                     .font(.system(size: 10.5))
                     .foregroundStyle(.secondary)
-                    .lineLimit(4)
+                    .lineLimit(2)
+                shortcutGuide
             }
             Spacer()
             Button {
@@ -88,6 +97,9 @@ struct ClipboardQuickPanelView: View {
                 .onChange(of: history.quickSelectionIndex) { _, _ in
                     scrollSelectedEntry(with: proxy)
                 }
+                .onChange(of: history.quickSelectionIsVisible) { _, _ in
+                    scrollSelectedEntry(with: proxy)
+                }
                 .onChange(of: history.quickQuery) { _, _ in
                     scrollSelectedEntry(with: proxy)
                 }
@@ -105,12 +117,40 @@ struct ClipboardQuickPanelView: View {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { _, entry in
                     entryRow(entry,
                              shortcutIndex: shortcutIndex(for: entry),
-                             isSelected: history.selectedQuickEntryID == entry.id,
-                             isBatchSelected: history.isQuickBatchSelected(entry))
+                             isSelected: history.quickSelectionIsVisible
+                                && history.selectedQuickEntryID == entry.id,
+                             isBatchSelected: history.isQuickBatchSelected(entry),
+                             isHovered: hoveredEntryID == entry.id)
                         .id(entry.id)
                 }
             }
         }
+    }
+
+    private var shortcutGuide: some View {
+        HStack(spacing: 6) {
+            shortcutBadge(key: text.clickRowShortcut, action: l10n.s.menuPaste)
+            shortcutBadge(key: text.commandClickShortcut, action: text.copy)
+            shortcutBadge(key: "Enter", action: l10n.s.menuPaste)
+            shortcutBadge(key: "Shift Enter", action: text.copy)
+        }
+    }
+
+    private func shortcutBadge(key: String, action: String) -> some View {
+        HStack(spacing: 4) {
+            Text(key)
+                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.primary.opacity(0.78))
+            Text(action)
+                .font(.system(size: 9.5, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.primary.opacity(0.06))
+        )
     }
 
     private func emptyState(_ message: String) -> some View {
@@ -128,7 +168,8 @@ struct ClipboardQuickPanelView: View {
     private func entryRow(_ entry: ClipboardHistoryEntry,
                           shortcutIndex: Int?,
                           isSelected: Bool,
-                          isBatchSelected: Bool) -> some View {
+                          isBatchSelected: Bool,
+                          isHovered: Bool) -> some View {
         HStack(alignment: .top, spacing: 9) {
             Button {
                 history.toggleQuickBatchSelection(entry)
@@ -145,7 +186,6 @@ struct ClipboardQuickPanelView: View {
                     .font(.system(size: 11.5))
                     .lineLimit(3)
                     .truncationMode(.tail)
-                    .textSelection(.enabled)
                     .help(entry.preview)
                 HStack(spacing: 7) {
                     Text(entry.copiedAt, style: .time)
@@ -210,18 +250,29 @@ struct ClipboardQuickPanelView: View {
         .padding(9)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(rowBackground(entry: entry, isSelected: isSelected, isBatchSelected: isBatchSelected))
+                .fill(rowBackground(entry: entry,
+                                    isSelected: isSelected,
+                                    isBatchSelected: isBatchSelected,
+                                    isHovered: isHovered))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(isBatchSelected ? Color.accentColor.opacity(0.5)
-                        : isSelected ? Color.accentColor.opacity(0.28) : Color.clear,
+                        : isSelected ? Color.accentColor.opacity(0.28)
+                        : isHovered ? Color.accentColor.opacity(0.22) : Color.clear,
                         lineWidth: 1)
         )
         .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) {
+                hoveredEntryID = hovering ? entry.id : (hoveredEntryID == entry.id ? nil : hoveredEntryID)
+            }
+        }
         .onTapGesture {
             if NSEvent.modifierFlags.intersection([.command]).contains(.command) {
-                history.toggleQuickBatchSelection(entry)
+                history.copyOnlyQuickEntry(entry)
+            } else {
+                history.copyQuickEntry(entry)
             }
         }
         .help(entry.preview)
@@ -260,9 +311,11 @@ struct ClipboardQuickPanelView: View {
 
     private func rowBackground(entry: ClipboardHistoryEntry,
                                isSelected: Bool,
-                               isBatchSelected: Bool) -> Color {
-        if isBatchSelected { return Color.accentColor.opacity(0.16) }
-        if isSelected { return Color.accentColor.opacity(0.12) }
+                               isBatchSelected: Bool,
+                               isHovered: Bool) -> Color {
+        if isBatchSelected { return Color.accentColor.opacity(isHovered ? 0.2 : 0.16) }
+        if isSelected { return Color.accentColor.opacity(isHovered ? 0.16 : 0.12) }
+        if isHovered { return Color.accentColor.opacity(0.1) }
         return Color.primary.opacity(entry.isPinned ? 0.075 : 0.045)
     }
 
@@ -298,7 +351,7 @@ struct ClipboardQuickPanelView: View {
     }
 
     private func scrollSelectedEntry(with proxy: ScrollViewProxy) {
-        guard let id = history.selectedQuickEntryID else { return }
+        guard history.quickSelectionIsVisible, let id = history.selectedQuickEntryID else { return }
         withAnimation(.easeOut(duration: 0.12)) {
             proxy.scrollTo(id, anchor: .center)
         }

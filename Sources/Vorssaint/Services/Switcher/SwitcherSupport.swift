@@ -110,6 +110,12 @@ struct SwitcherShortcutHints: Equatable {
 }
 
 enum SwitcherSupport {
+    static func shouldNavigateBackwardOnShiftPress(shiftIsNavigationModifier: Bool,
+                                                   wasShiftHeld: Bool,
+                                                   isShiftHeld: Bool) -> Bool {
+        shiftIsNavigationModifier && isShiftHeld && !wasShiftHeld
+    }
+
     static func updatedMRU(afterActivating activatedID: String,
                            previousID: String?,
                            existing: [String],

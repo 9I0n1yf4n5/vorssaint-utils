@@ -117,7 +117,7 @@ final class UpdateService: ObservableObject {
                 self.downloadURL = asset?.browserDownloadURL
 
                 if Self.isNewer(latest, than: AppInfo.version), self.downloadURL != nil {
-                    self.availableNotes = release.body
+                    self.availableNotes = ReleaseNotes.inAppUpdateNotes(from: release.body)
                     self.state = .available(version: latest)
                     // Notify once per distinct release, not on every hourly re-check.
                     if !manual, latest != self.notifiedVersion {

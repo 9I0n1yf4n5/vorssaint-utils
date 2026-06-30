@@ -68,6 +68,8 @@ final class ClipboardHistoryService: ObservableObject {
         }
     }
     @Published private(set) var quickSelectionIndex = 0
+    @Published private(set) var quickSelectionIsVisible = false
+    @Published private(set) var quickWindowPresentationID = UUID()
 
     private var timer: Timer?
     private var lastChangeCount = NSPasteboard.general.changeCount
@@ -272,6 +274,12 @@ final class ClipboardHistoryService: ObservableObject {
         let count = filteredQuickEntries.count
         guard count > 0 else {
             quickSelectionIndex = 0
+            quickSelectionIsVisible = false
+            return
+        }
+        if !quickSelectionIsVisible {
+            quickSelectionIndex = clampedQuickSelectionIndex(for: count)
+            quickSelectionIsVisible = true
             return
         }
         quickSelectionIndex = min(max(quickSelectionIndex + delta, 0), count - 1)
@@ -513,6 +521,7 @@ final class ClipboardHistoryService: ObservableObject {
     func showHistoryWindow() {
         let panel = ensurePanel()
         rememberPasteTarget()
+        quickWindowPresentationID = UUID()
         quickQuery = ""
         clearQuickBatchSelection()
         resetQuickSelection()
@@ -709,9 +718,8 @@ final class ClipboardHistoryService: ObservableObject {
     }
 
     private func resetQuickSelection() {
-        quickSelectionIndex = ClipboardHistorySelection.initialIndex(totalCount: filteredQuickEntries.count,
-                                                                    pinnedCount: pinnedEntries.count,
-                                                                    query: quickQuery)
+        quickSelectionIndex = ClipboardHistorySelection.initialIndex(totalCount: filteredQuickEntries.count)
+        quickSelectionIsVisible = false
     }
 
     private var quickBatchEntries: [ClipboardHistoryEntry] {

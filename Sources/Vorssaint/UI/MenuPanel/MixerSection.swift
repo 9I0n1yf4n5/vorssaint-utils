@@ -15,6 +15,8 @@ struct MixerSection: View {
     @ObservedObject private var outputSwitcher = SoundOutputSwitcher.shared
     @AppStorage(DefaultsKey.mixerLowerVolumeOnHeadphonesDisconnect)
     private var lowerOnHeadphonesDisconnect = false
+    @AppStorage(DefaultsKey.mixerHeadphonesDisconnectVolumePercent)
+    private var headphonesDisconnectVolumePercent = 0
     @AppStorage(DefaultsKey.soundOutputSwitcherEnabled)
     private var soundOutputSwitcherEnabled = false
     @State private var soundOutputSwitcherUIDs: [String] = []
@@ -127,7 +129,34 @@ struct MixerSection: View {
                 .font(.system(size: 9.5))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            if lowerOnHeadphonesDisconnect {
+                HStack(spacing: 8) {
+                    Stepper(value: headphonesDisconnectVolumeBinding, in: 0...100, step: 5) {
+                        Text(l10n.s.mixerHeadphonesDisconnectVolume)
+                            .font(.system(size: 10.5, weight: .medium))
+                    }
+                    .controlSize(.small)
+                    Spacer(minLength: 6)
+                    Text("\(headphonesDisconnectDisplayPercent)%")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(width: 38, alignment: .trailing)
+                }
+            }
         }
+    }
+
+    private var headphonesDisconnectVolumeBinding: Binding<Int> {
+        Binding(
+            get: { Defaults.sanitizedMixerHeadphonesDisconnectVolumePercent(headphonesDisconnectVolumePercent) },
+            set: { headphonesDisconnectVolumePercent = Defaults.sanitizedMixerHeadphonesDisconnectVolumePercent($0) }
+        )
+    }
+
+    private var headphonesDisconnectDisplayPercent: Int {
+        Defaults.sanitizedMixerHeadphonesDisconnectVolumePercent(headphonesDisconnectVolumePercent)
     }
 
     private var soundOutputSwitcherControls: some View {

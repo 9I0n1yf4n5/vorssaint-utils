@@ -75,7 +75,8 @@ struct UpdatePreviewView: View {
     private var release: ReleaseNotes {
         // The release body is the changelog section without its `## [..]` header;
         // synthesize one so the existing parser can structure it.
-        ReleaseNotes.notes(for: version, changelog: "## [\(version)]\n\n" + (notes ?? ""))
+        let body = ReleaseNotes.inAppUpdateNotes(from: notes) ?? ""
+        return ReleaseNotes.notes(for: version, changelog: "## [\(version)]\n\n" + body)
     }
 
     var body: some View {

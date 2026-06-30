@@ -23,6 +23,7 @@ struct MenuBarMetricsPreview: View {
     @AppStorage(DefaultsKey.menuBarMetricOrder) private var metricOrder = ""
     @AppStorage(DefaultsKey.menuBarCombineTemperatures) private var combineTemperatures = true
     @AppStorage(DefaultsKey.menuBarLabelStyle) private var labelStyle = "compact"
+    @AppStorage(DefaultsKey.menuBarNetworkUploadFirst) private var networkUploadFirst = false
     @AppStorage(DefaultsKey.menuBarMemoryStyle) private var memoryStyle = "percent"
     @AppStorage(DefaultsKey.temperatureUnit) private var temperatureUnit = TemperatureUnit.celsius.rawValue
 
@@ -30,6 +31,7 @@ struct MenuBarMetricsPreview: View {
         let _ = metricOrder
         let _ = combineTemperatures
         let _ = labelStyle
+        let _ = networkUploadFirst
         let _ = memoryStyle
         let _ = temperatureUnit
         let lines = MenuBarRenderer.lines(for: monitor.snapshot, metrics: activeMetrics)
@@ -112,31 +114,34 @@ struct MenuBarMetricsPreview: View {
                         style: style,
                         pressure: pressure)
         case let .networkBlock(down, up, style):
-            VStack(alignment: .leading, spacing: -0.6) {
-                Text("↓\(down)")
-                Text("↑\(up)")
+            let rows = networkUploadFirst ? [("↑", up), ("↓", down)] : [("↓", down), ("↑", up)]
+            VStack(alignment: .trailing, spacing: -0.6) {
+                Text(rows[0].0 + rows[0].1)
+                    .lineLimit(1)
+                Text(rows[1].0 + rows[1].1)
+                    .lineLimit(1)
             }
             .font(.system(size: MenuBarRenderer.networkBlockFontSize(style: style),
                           weight: .semibold,
                           design: .monospaced))
             .foregroundStyle(.white)
-            .frame(minWidth: style == .readable ? 39 : 36,
-                   minHeight: style == .readable ? 22 : 20,
+            .frame(width: MenuBarRenderer.rateBlockWidth(style: style),
+                   height: style == .readable ? 22 : 20,
                    alignment: .center)
-            .fixedSize(horizontal: true, vertical: true)
         case let .diskActivityBlock(read, write, style):
-            VStack(alignment: .leading, spacing: -0.6) {
+            VStack(alignment: .trailing, spacing: -0.6) {
                 Text("R\(read)")
+                    .lineLimit(1)
                 Text("W\(write)")
+                    .lineLimit(1)
             }
             .font(.system(size: MenuBarRenderer.networkBlockFontSize(style: style),
                           weight: .semibold,
                           design: .monospaced))
             .foregroundStyle(.white)
-            .frame(minWidth: style == .readable ? 39 : 36,
-                   minHeight: style == .readable ? 22 : 20,
+            .frame(width: MenuBarRenderer.rateBlockWidth(style: style),
+                   height: style == .readable ? 22 : 20,
                    alignment: .center)
-            .fixedSize(horizontal: true, vertical: true)
         case let .batteryBlock(percent, isCharging, style):
             HStack(spacing: style == .readable ? 5 : 4) {
                 Image(systemName: MenuBarRenderer.batterySymbol(for: percent, isCharging: isCharging))

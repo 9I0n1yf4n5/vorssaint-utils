@@ -57,6 +57,12 @@ struct MetricsTests {
         expectEqual(MetricFormat.bytesPerSecCompact(0), "0B", "compact zero")
         expectEqual(MetricFormat.bytesPerSecCompact(320 * 1024), "320K", "compact 320K")
         expectEqual(MetricFormat.bytesPerSecCompact(1.2 * 1024 * 1024), "1.2M", "compact 1.2M")
+        expectEqual(MetricFormat.bytesPerSecCompact(1022), "1022B", "compact 1022B remains stable")
+        expectEqual(MetricFormat.bytesPerSecCompact(1023.4), "1023B", "compact keeps sub-kilobyte values")
+        expectEqual(MetricFormat.bytesPerSecCompact(1023.6), "1.0K", "compact promotes rounded kilobyte edge")
+        expectEqual(MetricFormat.bytesPerSecCompact(9.96 * 1024), "10K", "compact drops redundant decimal at 10K")
+        expectEqual(MetricFormat.bytesPerSecCompact(1023.6 * 1024), "1.0M", "compact promotes rounded megabyte edge")
+        expectEqual(MetricFormat.bytesPerSecCompact(9.96 * 1024 * 1024), "10M", "compact drops redundant decimal at 10M")
 
         // MARK: Disk helpers
 
@@ -130,20 +136,24 @@ struct MetricsTests {
         expect(ClipboardHistorySearch.rankedIndexes(candidates: clipboardCandidates,
                                                     matching: "missing") == [],
                "clipboard search returns no results for unmatched terms")
-        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("Option+P"),
-               "clipboard shortcut hint exposes pin keyboard action in Portuguese")
-        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("Shift+Enter"),
-               "clipboard shortcut hint exposes copy-only keyboard action in Portuguese")
-        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("⌘+clique"),
-               "clipboard shortcut hint exposes multi-selection in Portuguese")
-        expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("Option+Delete"),
-               "clipboard shortcut hint exposes delete keyboard action in English")
-        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("Option+P"),
-               "clipboard shortcut hint exposes pin keyboard action in Turkish")
-        expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("Cmd-click"),
-               "clipboard shortcut hint exposes multi-selection in English")
-        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("Cmd-tıklama"),
-               "clipboard shortcut hint exposes multi-selection in Turkish")
+        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("copiar e colar"),
+               "clipboard shortcut hint exposes row click paste in Portuguese")
+        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("⌘+clique só copia"),
+               "clipboard shortcut hint exposes command click copy-only in Portuguese")
+        expect(FeatureStrings.clipboard(.ptBR).clickRowShortcut == "Clique na linha",
+               "clipboard visual shortcut exposes row click in Portuguese")
+        expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("copy and paste"),
+               "clipboard shortcut hint exposes row click paste in English")
+        expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("⌘-click only copies"),
+               "clipboard shortcut hint exposes command click copy-only in English")
+        expect(FeatureStrings.clipboard(.enUS).commandClickShortcut == "⌘ Click",
+               "clipboard visual shortcut exposes command click in English")
+        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("kopyalayıp yapıştır"),
+               "clipboard shortcut hint exposes row click paste in Turkish")
+        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("yalnızca kopyalar"),
+               "clipboard shortcut hint exposes command click copy-only in Turkish")
+        expect(FeatureStrings.clipboard(.tr).clickRowShortcut == "Satıra tıkla",
+               "clipboard visual shortcut exposes row click in Turkish")
         let featureTitles: [(AppLanguage, String, String, String, String)] = [
             (.enUS, "Clipboard", "Window layout", "Utilities", "Alerts"),
             (.ptBR, "Clipboard", "Layout de janelas", "Utilitários", "Alertas"),
@@ -176,12 +186,10 @@ struct MetricsTests {
             expectFormat(alertStrings.diskBodyFormat, ["@", "d"], "\(language.rawValue) disk alert format")
             expectFormat(alertStrings.batteryBodyFormat, ["d"], "\(language.rawValue) battery alert format")
         }
-        expect(ClipboardHistorySelection.initialIndex(totalCount: 3, pinnedCount: 0, query: "") == 1,
-               "clipboard quick window starts on previous recent item when nothing is pinned")
-        expect(ClipboardHistorySelection.initialIndex(totalCount: 3, pinnedCount: 1, query: "") == 0,
-               "clipboard quick window keeps pinned items first")
-        expect(ClipboardHistorySelection.initialIndex(totalCount: 3, pinnedCount: 0, query: "deploy") == 0,
-               "clipboard quick window starts search results at the first match")
+        expect(ClipboardHistorySelection.initialIndex(totalCount: 3) == 0,
+               "clipboard quick window starts keyboard navigation on the first item")
+        expect(ClipboardHistorySelection.initialIndex(totalCount: 0) == 0,
+               "clipboard quick window keeps an empty selection index safe")
         expectEqual(ClipboardHistoryBatch.combinedText(["First", "Second", "Third"]),
                     "First\nSecond\nThird",
                     "clipboard batch joins selected entries as a single paste")
@@ -487,6 +495,8 @@ struct MetricsTests {
                "support prompt targets the current app version for every update")
         expect(registeredDefaults[DefaultsKey.mixerLowerVolumeOnHeadphonesDisconnect] as? Bool == false,
                "headphone disconnect volume lowering is opt-in")
+        expect(registeredDefaults[DefaultsKey.mixerHeadphonesDisconnectVolumePercent] as? Int == 0,
+               "headphone disconnect volume keeps the existing mute behavior by default")
         expect(registeredDefaults[DefaultsKey.soundOutputSwitcherEnabled] as? Bool == false,
                "sound output switcher is opt-in")
         expect(registeredDefaults[DefaultsKey.soundOutputSwitcherShortcut] as? String
@@ -586,6 +596,8 @@ struct MetricsTests {
                "menu bar combines usage and temperature by default")
         expect(registeredDefaults[DefaultsKey.menuBarSeparateMetrics] as? Bool == false,
                "separate menu bar metric items are opt-in")
+        expect(registeredDefaults[DefaultsKey.menuBarNetworkUploadFirst] as? Bool == false,
+               "network menu bar upload-first layout is opt-in")
         expect(registeredDefaults[DefaultsKey.menuBarLabelStyle] as? String == "compact",
                "menu bar label style defaults to compact")
         expect(registeredDefaults[DefaultsKey.menuBarMemoryStyle] as? String == "percent",
@@ -931,6 +943,12 @@ struct MetricsTests {
         expectClose(Defaults.sanitizedAppVolume(3), 2, "high app volume clamps to boost maximum")
         expectClose(Defaults.sanitizedAppVolume(-1), 0, "negative app volume clamps to mute")
         expectClose(Defaults.sanitizedAppVolume(.infinity), 1, "non-finite app volume falls back to unity")
+        expect(Defaults.sanitizedMixerHeadphonesDisconnectVolumePercent(35) == 35,
+               "headphone disconnect volume preserves valid percentages")
+        expect(Defaults.sanitizedMixerHeadphonesDisconnectVolumePercent(-5) == 0,
+               "headphone disconnect volume clamps low values")
+        expect(Defaults.sanitizedMixerHeadphonesDisconnectVolumePercent(105) == 100,
+               "headphone disconnect volume clamps high values")
         expect(Defaults.sanitizedAppOutputDeviceUID(" BuiltInSpeakerDevice ") == "BuiltInSpeakerDevice",
                "audio output device UIDs are trimmed")
         expect(Defaults.sanitizedAppOutputDeviceUID("") == nil,
@@ -1236,6 +1254,22 @@ struct MetricsTests {
         )
         expect(customSwitcherHints.apps == "⌥Tab" && customSwitcherHints.windows == "⌘J",
                "App Switcher icon-row hints show custom app and window shortcuts independently")
+        expect(SwitcherSupport.shouldNavigateBackwardOnShiftPress(shiftIsNavigationModifier: true,
+                                                                  wasShiftHeld: false,
+                                                                  isShiftHeld: true),
+               "App Switcher shift-only back navigation fires when Shift is pressed")
+        expect(!SwitcherSupport.shouldNavigateBackwardOnShiftPress(shiftIsNavigationModifier: true,
+                                                                   wasShiftHeld: true,
+                                                                   isShiftHeld: true),
+               "App Switcher shift-only back navigation does not repeat while Shift is held")
+        expect(!SwitcherSupport.shouldNavigateBackwardOnShiftPress(shiftIsNavigationModifier: true,
+                                                                   wasShiftHeld: true,
+                                                                   isShiftHeld: false),
+               "App Switcher shift-only back navigation does not fire on Shift release")
+        expect(!SwitcherSupport.shouldNavigateBackwardOnShiftPress(shiftIsNavigationModifier: false,
+                                                                   wasShiftHeld: false,
+                                                                   isShiftHeld: true),
+               "App Switcher shift-only back navigation stays off when Shift belongs to the shortcut")
         let groupedSwitcherItems = [
             SwitcherItem.window(id: 1, title: "One", appName: "Alpha", pid: 101,
                                 isOnScreen: true, frame: .zero),
@@ -1783,6 +1817,19 @@ struct MetricsTests {
                "release notes preserve an unheaded release-body summary paragraph")
         expect(previewNotes.sections.first?.paragraphItems.first == "A short release summary from the GitHub release body.",
                "release notes keep summary text before the first subsection")
+        let githubReleaseBodyWithFooter = """
+        ### Fixed
+        - Update preview stays focused on changes.
+
+        Signed with an Apple Developer ID and notarized by Apple, so it downloads and opens normally. Requires macOS 14 or later. Open the .dmg below and drag Vorssaint to Applications.
+        """
+        let inAppUpdateBody = ReleaseNotes.inAppUpdateNotes(from: githubReleaseBodyWithFooter) ?? ""
+        expect(!inAppUpdateBody.contains("Signed with an Apple Developer ID"),
+               "in-app update notes remove the GitHub installation footer")
+        let githubPreviewNotes = ReleaseNotes.notes(for: "2.17.4",
+                                                    changelog: "## [2.17.4]\n\n" + inAppUpdateBody)
+        expect(githubPreviewNotes.sections.first?.bulletItems == ["Update preview stays focused on changes."],
+               "in-app update notes keep release changes after removing the footer")
 
         // MARK: URL cleaning
 

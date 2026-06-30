@@ -83,10 +83,9 @@ enum ClipboardHistorySearch {
 }
 
 enum ClipboardHistorySelection {
-    static func initialIndex(totalCount: Int, pinnedCount: Int, query: String) -> Int {
-        let hasQuery = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        guard !hasQuery, pinnedCount == 0, totalCount > 1 else { return 0 }
-        return 1
+    static func initialIndex(totalCount: Int) -> Int {
+        guard totalCount > 0 else { return 0 }
+        return 0
     }
 }
 

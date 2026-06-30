@@ -153,6 +153,10 @@ enum MenuBarRenderer {
     private static let countdownColumns = 7
     private static let glyphAndButtonChrome: CGFloat = 26
     private static let separatorWidth = 3
+    private static let rateBlockReservedLines = [
+        "↓8888B", "↑8888B", "R8888B", "W8888B",
+        "↓8888M", "↑8888M", "R8888M", "W8888M",
+    ]
     private static let blockImageCache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 300
@@ -208,6 +212,10 @@ enum MenuBarRenderer {
 
     static func networkBlockLineHeight(style: MenuBarBlockStyle) -> CGFloat {
         style == .readable ? 11.0 : 10.0
+    }
+
+    static func rateBlockWidth(style: MenuBarBlockStyle) -> CGFloat {
+        rateBlockWidth(candidates: rateBlockReservedLines, style: style)
     }
 
     static func reservedStatusItemLength(for metrics: [MenuBarMetric],
@@ -670,7 +678,10 @@ enum MenuBarRenderer {
                                      pressure: pressure)
         let attachment = NSTextAttachment()
         attachment.image = image
-        attachment.bounds = NSRect(x: 0, y: -4.4, width: image.size.width, height: image.size.height)
+        attachment.bounds = NSRect(x: 0,
+                                   y: style == .readable ? -5.9 : -5.7,
+                                   width: image.size.width,
+                                   height: image.size.height)
         return NSAttributedString(attachment: attachment)
     }
 
@@ -704,7 +715,10 @@ enum MenuBarRenderer {
                                       style: style)
         let attachment = NSTextAttachment()
         attachment.image = image
-        attachment.bounds = NSRect(x: 0, y: -4.2, width: image.size.width, height: image.size.height)
+        attachment.bounds = NSRect(x: 0,
+                                   y: style == .readable ? -5.7 : -5.5,
+                                   width: image.size.width,
+                                   height: image.size.height)
         return NSAttributedString(attachment: attachment)
     }
 
@@ -760,10 +774,12 @@ enum MenuBarRenderer {
     }
 
     private static func networkBlockImage(down: String, up: String, style: MenuBarBlockStyle) -> NSImage {
-        let cacheKey = "network|\(down)|\(up)|\(style)" as NSString
+        let uploadFirst = UserDefaults.standard.bool(forKey: DefaultsKey.menuBarNetworkUploadFirst)
+        let cacheKey = "network|\(down)|\(up)|\(style)|\(uploadFirst)" as NSString
         if let cached = blockImageCache.object(forKey: cacheKey) { return cached }
 
-        return stackedRatesImage(lines: ["↓\(down)", "↑\(up)"],
+        let lines = uploadFirst ? ["↑\(up)", "↓\(down)"] : ["↓\(down)", "↑\(up)"]
+        return stackedRatesImage(lines: lines,
                                  reservedLines: ["↓000B", "↑000B"],
                                  cacheKey: cacheKey,
                                  style: style)
@@ -787,29 +803,35 @@ enum MenuBarRenderer {
                                           style: MenuBarBlockStyle) -> NSImage {
         let font = NSFont.monospacedSystemFont(ofSize: networkBlockFontSize(style: style),
                                                weight: .semibold)
-        let sizingAttrs: [NSAttributedString.Key: Any] = [.font: font]
         let lineHeight = networkBlockLineHeight(style: style)
-        let widthCandidates = lines + reservedLines
-        let width = (widthCandidates.map { ($0 as NSString).size(withAttributes: sizingAttrs).width }.max() ?? 22)
-            + (style == .readable ? 1.5 : 1.0)
         let height: CGFloat = style == .readable ? 22 : 20
-        let imageSize = NSSize(width: ceil(width), height: height)
+        let imageSize = NSSize(width: rateBlockWidth(style: style), height: height)
         let image = NSImage(size: imageSize, flipped: false) { rect in
             NSColor.clear.setFill()
             rect.fill()
             let attrs = dynamicTextAttributes(font: font)
-            let textSize = ("↓000B" as NSString).size(withAttributes: attrs)
+            let textSize = ((reservedLines.first ?? lines.first ?? "") as NSString).size(withAttributes: attrs)
             let contentHeight = lineHeight + textSize.height
             let bottomY = (imageSize.height - contentHeight) / 2
             for (index, line) in lines.enumerated() {
                 let y = bottomY + lineHeight * CGFloat(1 - index)
-                (line as NSString).draw(at: NSPoint(x: 0.5, y: y), withAttributes: attrs)
+                let lineSize = (line as NSString).size(withAttributes: attrs)
+                let x = max(0.5, imageSize.width - lineSize.width - 0.5)
+                (line as NSString).draw(at: NSPoint(x: x, y: y), withAttributes: attrs)
             }
             return true
         }
         image.isTemplate = false
         blockImageCache.setObject(image, forKey: cacheKey)
         return image
+    }
+
+    private static func rateBlockWidth(candidates: [String], style: MenuBarBlockStyle) -> CGFloat {
+        let font = NSFont.monospacedSystemFont(ofSize: networkBlockFontSize(style: style),
+                                               weight: .semibold)
+        let sizingAttrs: [NSAttributedString.Key: Any] = [.font: font]
+        let contentWidth = candidates.map { ($0 as NSString).size(withAttributes: sizingAttrs).width }.max() ?? 22
+        return ceil(contentWidth + (style == .readable ? 1.5 : 1.0))
     }
 
     private static func batteryBlockImage(percent: Int,

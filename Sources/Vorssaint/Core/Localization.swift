@@ -538,6 +538,7 @@ struct Strings {
     let mixerSystemOutputErrorFormat: String
     let mixerLowerOnHeadphonesDisconnect: String
     let mixerLowerOnHeadphonesDisconnectCaption: String
+    let mixerHeadphonesDisconnectVolume: String
     let soundOutputSwitcherTitle: String
     let soundOutputSwitcherEnable: String
     let soundOutputSwitcherCaption: String
@@ -625,6 +626,7 @@ struct Strings {
     let monitorCombineTemperaturesCaption: String
     let monitorSeparateMenuBarMetrics: String
     let monitorSeparateMenuBarMetricsCaption: String
+    let monitorNetworkUploadFirst: String
     let monitorShowCPU: String
     let monitorShowMemory: String
     let monitorShowNetwork: String
@@ -1246,7 +1248,8 @@ extension Strings {
         mixerSystemOutputTooltip: "Escolher saída do sistema",
         mixerSystemOutputErrorFormat: "Não foi possível trocar: %@",
         mixerLowerOnHeadphonesDisconnect: "Baixar volume ao desconectar fones",
-        mixerLowerOnHeadphonesDisconnectCaption: "Reduz a saída para 0% quando fones com fio ou Bluetooth desconectam.",
+        mixerLowerOnHeadphonesDisconnectCaption: "Ajusta a saída quando fones com fio ou Bluetooth desconectam.",
+        mixerHeadphonesDisconnectVolume: "Volume ao desconectar",
         soundOutputSwitcherTitle: "Alternador de saída",
         soundOutputSwitcherEnable: "Alternar saídas por atalho",
         soundOutputSwitcherCaption: "Escolha as saídas e use o atalho para passar para a próxima disponível.",
@@ -1329,6 +1332,7 @@ extension Strings {
         monitorCombineTemperaturesCaption: "Quando uso e temperatura do mesmo item estiverem ativos, mostra tudo em um bloco só.",
         monitorSeparateMenuBarMetrics: "Separar métricas em itens próprios",
         monitorSeparateMenuBarMetricsCaption: "Separa os blocos ativos na barra de menus e mantém uso e temperatura juntos quando combinar estiver ativo.",
+        monitorNetworkUploadFirst: "Upload acima do download",
         monitorShowCPU: "CPU",
         monitorShowMemory: "Memória",
         monitorShowNetwork: "Rede",
@@ -1941,7 +1945,8 @@ extension Strings {
         mixerSystemOutputTooltip: "Choose system output",
         mixerSystemOutputErrorFormat: "Could not switch: %@",
         mixerLowerOnHeadphonesDisconnect: "Lower volume when headphones disconnect",
-        mixerLowerOnHeadphonesDisconnectCaption: "Sets output to 0% when wired or Bluetooth headphones disconnect.",
+        mixerLowerOnHeadphonesDisconnectCaption: "Adjusts output when wired or Bluetooth headphones disconnect.",
+        mixerHeadphonesDisconnectVolume: "Volume after disconnect",
         soundOutputSwitcherTitle: "Output switcher",
         soundOutputSwitcherEnable: "Switch outputs with shortcut",
         soundOutputSwitcherCaption: "Choose outputs and use the shortcut to move to the next available one.",
@@ -2024,6 +2029,7 @@ extension Strings {
         monitorCombineTemperaturesCaption: "When usage and temperature for the same item are enabled, show them in one block.",
         monitorSeparateMenuBarMetrics: "Separate metrics into their own items",
         monitorSeparateMenuBarMetricsCaption: "Separates active blocks in the menu bar and keeps usage and temperature together when combine is on.",
+        monitorNetworkUploadFirst: "Upload above download",
         monitorShowCPU: "CPU",
         monitorShowMemory: "Memory",
         monitorShowNetwork: "Network",

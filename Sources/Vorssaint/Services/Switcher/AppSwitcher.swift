@@ -63,6 +63,7 @@ final class AppSwitcher: ObservableObject {
     private var sessionStartItemID: String?
     private var sessionSourceContext: SwitcherSourceContext?
     private var sessionShortcut: GlobalShortcut?
+    private var shiftBackNavigationHeld = false
 
     // Virtual key codes handled during a session.
     private enum KeyCode {
@@ -157,10 +158,13 @@ final class AppSwitcher: ObservableObject {
         case .keyDown:
             return handleKeyDown(event)
         case .flagsChanged:
-            if sessionActive,
-               let shortcut = sessionShortcut,
-               !shortcut.requiredModifiersHeld(in: event.flags) {
-                commitSession()
+            if sessionActive {
+                if let shortcut = sessionShortcut,
+                   !shortcut.requiredModifiersHeld(in: event.flags) {
+                    commitSession()
+                } else if handleShiftBackNavigation(flags: event.flags) {
+                    return nil
+                }
             }
             return Unmanaged.passUnretained(event)
         default:
@@ -190,6 +194,9 @@ final class AppSwitcher: ObservableObject {
                                                   fallback: .switcherWindowDefault)
         switch keyCode {
         case _ where keyCode == shortcut.keyCode && shortcut.matches(event: event, allowingExtraShift: true):
+            if shortcut.shiftIsNavigationModifier, flags.contains(.maskShift), shiftBackNavigationHeld {
+                break
+            }
             let delta = shortcut.shiftIsNavigationModifier && flags.contains(.maskShift) ? -1 : 1
             advanceSelection(by: delta)
         case _ where iconRowModeEnabled && searchQuery.isEmpty
@@ -247,6 +254,7 @@ final class AppSwitcher: ObservableObject {
         selectedIndex = initialSelectionIndex(in: list, reversed: reversed)
         sessionActive = true
         sessionShortcut = shortcut
+        shiftBackNavigationHeld = reversed && shortcut.shiftIsNavigationModifier
 
         WindowPreviewProvider.shared.refreshPreviews(for: list, maxPixelSize: 640 * PreviewSizing.scale) { [weak self] windowID, image in
             guard let self,
@@ -255,6 +263,18 @@ final class AppSwitcher: ObservableObject {
             self.previews[windowID] = image
         }
         scheduleShowPanel()
+        return true
+    }
+
+    private func handleShiftBackNavigation(flags: CGEventFlags) -> Bool {
+        let shiftHeld = flags.contains(.maskShift)
+        defer { shiftBackNavigationHeld = shiftHeld }
+        guard let shortcut = sessionShortcut,
+              SwitcherSupport.shouldNavigateBackwardOnShiftPress(shiftIsNavigationModifier: shortcut.shiftIsNavigationModifier,
+                                                                  wasShiftHeld: shiftBackNavigationHeld,
+                                                                  isShiftHeld: shiftHeld)
+        else { return false }
+        advanceSelection(by: -1)
         return true
     }
 
@@ -595,6 +615,7 @@ final class AppSwitcher: ObservableObject {
         sessionStartItemID = nil
         sessionSourceContext = nil
         sessionShortcut = nil
+        shiftBackNavigationHeld = false
     }
 
     // MARK: - Panel

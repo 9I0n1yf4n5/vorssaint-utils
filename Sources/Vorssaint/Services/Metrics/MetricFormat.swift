@@ -109,9 +109,35 @@ enum MetricFormat {
 
     /// A compact throughput for the menu bar, e.g. "1.2M", "320K", "0B".
     static func bytesPerSecCompact(_ bytesPerSecond: Double) -> String {
-        let (value, unit) = scale(bytesPerSecond)
-        let letter = unit == "B" ? "B" : String(unit.prefix(1))
-        return "\(number(value, unit: unit))\(letter)"
+        let units = ["B", "K", "M", "G", "T", "P"]
+        var value = bytesPerSecond.isFinite ? max(0, bytesPerSecond) : 0
+        var index = 0
+        while value >= 1024, index < units.count - 1 {
+            value /= 1024
+            index += 1
+        }
+        while index < units.count - 1 {
+            if index == 0 {
+                guard value.rounded() >= 1024 else { break }
+            } else if value >= 10 {
+                guard value.rounded() >= 1024 else { break }
+            } else {
+                break
+            }
+            value /= 1024
+            index += 1
+        }
+        if index == 0 {
+            return "\(Int(value.rounded()))B"
+        }
+        if value < 10 {
+            let rounded = (value * 10).rounded() / 10
+            if rounded >= 10 {
+                return "\(Int(rounded.rounded()))\(units[index])"
+            }
+            return String(format: "%.1f%@", rounded, units[index])
+        }
+        return "\(Int(value.rounded()))\(units[index])"
     }
 
     // MARK: Watts & percentages

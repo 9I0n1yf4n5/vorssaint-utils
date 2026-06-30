@@ -41,6 +41,7 @@ enum DefaultsKey {
     static let appVolumes = "appVolumes"                  // [bundle id: 0...2]
     static let appOutputDevices = "appOutputDevices"      // [bundle id: audio device UID]
     static let mixerLowerVolumeOnHeadphonesDisconnect = "mixerLowerVolumeOnHeadphonesDisconnect"
+    static let mixerHeadphonesDisconnectVolumePercent = "mixerHeadphonesDisconnectVolumePercent"
     static let soundOutputSwitcherEnabled = "soundOutputSwitcherEnabled"
     static let soundOutputSwitcherShortcut = "soundOutputSwitcherShortcut"
     static let soundOutputSwitcherDeviceUIDs = "soundOutputSwitcherDeviceUIDs"
@@ -95,6 +96,7 @@ enum DefaultsKey {
     static let menuBarMetricOrder = "menuBarMetricOrder" // comma-separated MenuBarMetric raw values
     static let menuBarCombineTemperatures = "menuBarCombineTemperatures" // usage/charge + temperature in one block when possible
     static let menuBarSeparateMetrics = "menuBarSeparateMetrics" // one status item per active metric
+    static let menuBarNetworkUploadFirst = "menuBarNetworkUploadFirst" // network menu bar block shows upload above download
     static let menuBarLabelStyle = "menuBarLabelStyle"     // compact | classic
     static let menuBarMemoryStyle = "menuBarMemoryStyle"   // dot | percent | both
     static let monitorInterval = "monitorIntervalSeconds"  // sampling cadence: 1/2/5
@@ -313,6 +315,7 @@ enum Defaults {
         DefaultsKey.updateShowcaseIntroVersion: "",
         DefaultsKey.updateShowcaseMediaOverride: "",
         DefaultsKey.mixerLowerVolumeOnHeadphonesDisconnect: false,
+        DefaultsKey.mixerHeadphonesDisconnectVolumePercent: 0,
         DefaultsKey.soundOutputSwitcherEnabled: false,
         DefaultsKey.soundOutputSwitcherShortcut: GlobalShortcut.soundOutputSwitcherDefault.storageValue,
         // Finder never benefits from being "quit" (it just relaunches), so
@@ -360,6 +363,7 @@ enum Defaults {
         DefaultsKey.menuBarMetricOrder: defaultMenuBarMetricOrder.joined(separator: ","),
         DefaultsKey.menuBarCombineTemperatures: true,
         DefaultsKey.menuBarSeparateMetrics: false,
+        DefaultsKey.menuBarNetworkUploadFirst: false,
         DefaultsKey.menuBarLabelStyle: "compact",
         DefaultsKey.menuBarMemoryStyle: "percent",
         DefaultsKey.monitorShowSystem: true,
@@ -603,6 +607,10 @@ enum Defaults {
     static func sanitizedAppVolume(_ volume: Double) -> Double {
         guard volume.isFinite else { return 1 }
         return min(max(volume, 0), 2)
+    }
+
+    static func sanitizedMixerHeadphonesDisconnectVolumePercent(_ percent: Int) -> Int {
+        min(max(percent, 0), 100)
     }
 
     static func sanitizedAppOutputDeviceUID(_ value: Any?) -> String? {

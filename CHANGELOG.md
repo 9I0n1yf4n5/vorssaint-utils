@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.6] - 2026-06-30
+
+### Summary
+Vorssaint 3.1.6 adds Turkish, makes Clipboard History quicker to use from the quick window, lets Mixer choose how low speaker volume goes after headphones disconnect, adds faster App Switcher back navigation, adds a Network menu bar order option, steadies the Network menu bar metric, cleans up the in app update preview and corrects the menu bar monitor layout so pinned metrics sit centered beside the app icon.
+
+### Added
+- Turkish is now available throughout the app, thanks to Abdurrahman.
+
+### Changed
+- Clipboard History quick window rows can now be clicked to paste that item into
+  the previous app, with Command click copying only.
+- Mixer can now choose the volume used after wired or Bluetooth headphones
+  disconnect.
+- App Switcher can now move backward with Shift while the switcher is open.
+- Monitor can now place upload above download in the Network menu bar metric.
+
+### Fixed
+- The update preview no longer shows install instructions meant for the download
+  page.
+- Network speed in the menu bar no longer changes the item width as live traffic
+  updates.
+- Menu bar monitor metrics now sit centered beside the app icon.
+
 ## [3.1.5] - 2026-06-29
 
 ### Summary

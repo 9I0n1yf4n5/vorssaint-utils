@@ -473,7 +473,10 @@ final class AppVolumeMixer: ObservableObject {
             return
         }
 
-        if Self.setOutputVolume(0, for: nextDefault.audioObjectID) {
+        let percent = Defaults.sanitizedMixerHeadphonesDisconnectVolumePercent(
+            UserDefaults.standard.integer(forKey: DefaultsKey.mixerHeadphonesDisconnectVolumePercent)
+        )
+        if Self.setOutputVolume(Float32(Double(percent) / 100), for: nextDefault.audioObjectID) {
             lastAutomaticLoweredOutputUID = nextDefaultUID
         }
     }
