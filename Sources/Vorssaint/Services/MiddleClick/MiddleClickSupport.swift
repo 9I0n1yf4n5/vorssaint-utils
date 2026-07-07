@@ -50,4 +50,41 @@ enum MiddleClickSupport {
         guard settledFor >= minimumSettle else { return .passThrough }
         return .transform
     }
+
+    // MARK: - Tap to middle click (issue #161, opt-in)
+
+    /// A touch that lasts longer than this is a rest or a press, not a tap.
+    static let tapMaxDuration: TimeInterval = 0.35
+
+    /// How far the fingers' average position may travel (normalized trackpad
+    /// units, 0...1 across the pad) before the touch counts as a swipe. Space
+    /// switching and Mission Control travel far past this.
+    static let tapMovementLimit: Float = 0.03
+
+    /// How much the fingers' spread (mean distance from their centroid) may
+    /// change before the touch counts as a pinch. A pinch or spread keeps the
+    /// centroid still, so the movement limit alone would let Launchpad and
+    /// show-desktop gestures fire a phantom middle click.
+    static let tapSpreadChangeLimit: Float = 0.04
+
+    /// Decides whether a finished touch was a deliberate tap. `tapFingers` is
+    /// the user's chosen count (3 or 4); with the system three-finger drag
+    /// gesture enabled a three-finger tap belongs to macOS, so only the
+    /// four-finger option stays available.
+    static func tapShouldFire(duration: TimeInterval,
+                              maxMovement: Float,
+                              maxSpreadChange: Float,
+                              exceededFingerCount: Bool,
+                              buttonPressedDuring: Bool,
+                              positionUnavailable: Bool,
+                              systemDragGestureEnabled: Bool,
+                              tapFingers: Int) -> Bool {
+        guard tapFingers == 3 || tapFingers == 4 else { return false }
+        guard !exceededFingerCount, !buttonPressedDuring, !positionUnavailable else { return false }
+        guard duration > 0, duration <= tapMaxDuration else { return false }
+        guard maxMovement <= tapMovementLimit else { return false }
+        guard maxSpreadChange <= tapSpreadChangeLimit else { return false }
+        if tapFingers == 3, systemDragGestureEnabled { return false }
+        return true
+    }
 }

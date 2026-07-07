@@ -212,6 +212,77 @@ enum ClipboardHistoryBatch {
     static func orderedSelectedIndexes<ID: Hashable>(allIDs: [ID], selectedIDs: Set<ID>) -> [Int] {
         allIDs.indices.filter { selectedIDs.contains(allIDs[$0]) }
     }
+
+    /// The ids a shift-click covers, Finder style: from the anchor row (the
+    /// last one the user touched) to the clicked one, inclusive, in either
+    /// direction.
+    static func rangeSelectionIDs<ID>(allIDs: [ID], anchor: Int, target: Int) -> [ID] {
+        guard !allIDs.isEmpty else { return [] }
+        let low = min(max(min(anchor, target), 0), allIDs.count - 1)
+        let high = min(max(max(anchor, target), 0), allIDs.count - 1)
+        return Array(allIDs[low...high])
+    }
+
+    /// How a multi-item selection travels on the pasteboard. A selection made
+    /// only of file items pastes as the files themselves, so Finder receives
+    /// real files. A selection with any image in it pastes as rich text with
+    /// the images embedded (Notes, Mail and TextEdit take both together),
+    /// with the text parts doubling as the plain-text fallback. Anything else
+    /// combines as text, file items contributing their paths.
+    enum PasteMode: Equatable {
+        case files([String])
+        case text(String)
+        case rich([RichPart])
+    }
+
+    enum RichPart: Equatable {
+        case text(String)
+        /// The image store file name for an `.image` entry.
+        case image(String)
+    }
+
+    static func pasteMode(for entries: [ClipboardHistoryEntry]) -> PasteMode? {
+        guard !entries.isEmpty else { return nil }
+        if entries.allSatisfy({ $0.kind == .files }) {
+            return .files(entries.flatMap(\.filePaths))
+        }
+        if entries.contains(where: { $0.kind == .image }) {
+            let parts = entries.compactMap { entry -> RichPart? in
+                switch entry.kind {
+                case .text: return .text(entry.text)
+                case .files: return .text(entry.filePaths.joined(separator: "\n"))
+                case .image: return entry.imageFile.map(RichPart.image)
+                }
+            }
+            return parts.isEmpty ? nil : .rich(parts)
+        }
+        let texts = entries.map { entry in
+            entry.kind == .files ? entry.filePaths.joined(separator: "\n") : entry.text
+        }
+        return .text(combinedText(texts))
+    }
+
+    /// Whether a window-level ⌘C/⌘A belongs to the entry list instead of the
+    /// search field. Only an explicit multi-selection claims the shortcut:
+    /// arrow-key highlight alone must not steal copy or select-all from text
+    /// editing in the field (⇧Enter still copies the highlighted row).
+    /// ⌘A additionally falls to the list while the query is empty, where the
+    /// field has nothing to select.
+    static func listOwnsCopyShortcut(batchCount: Int) -> Bool {
+        batchCount > 0
+    }
+
+    static func listOwnsSelectAllShortcut(batchCount: Int, queryIsEmpty: Bool) -> Bool {
+        batchCount > 0 || queryIsEmpty
+    }
+
+    /// The plain-text side of a rich batch, for targets that only take text.
+    static func richPlainText(_ parts: [RichPart]) -> String {
+        combinedText(parts.compactMap { part in
+            if case let .text(text) = part { return text }
+            return nil
+        })
+    }
 }
 
 enum ClipboardHistoryPasteboardText {

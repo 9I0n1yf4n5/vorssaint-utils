@@ -101,7 +101,12 @@ if (( TEST )); then
         Sources/Vorssaint/Services/Homebrew/HomebrewSupport.swift \
         Sources/Vorssaint/Services/Clipboard/ClipboardHistorySupport.swift \
         Sources/Vorssaint/Services/AutoQuit/AutoQuitSupport.swift \
+        Sources/Vorssaint/Services/Shelf/ShelfSupport.swift \
+        Sources/Vorssaint/Services/Update/UpdateInstallerSupport.swift \
+        Sources/Vorssaint/UI/Settings/SettingsSearchSupport.swift \
+        Sources/Vorssaint/App/MenuBarSpacingSupport.swift \
         Sources/Vorssaint/Services/DockClick/DockClickSupport.swift \
+        Sources/Vorssaint/Services/Finder/CutPasteProgressSupport.swift \
         Sources/Vorssaint/Services/MiddleClick/MiddleClickSupport.swift \
         Sources/Vorssaint/Services/QuickTools/QuickToolsSupport.swift \
         Sources/Vorssaint/Services/KeyboardDebounce/KeyboardDebounceSupport.swift \

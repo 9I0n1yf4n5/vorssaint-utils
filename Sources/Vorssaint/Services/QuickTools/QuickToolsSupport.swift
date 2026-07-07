@@ -30,17 +30,19 @@ enum ColorCopyFormat: String, CaseIterable, Identifiable {
 enum QuickToolsSupport {
     /// Formats sRGB components (0...1) in the chosen copy format. Components
     /// out of range are clamped so extended-gamut samples never produce
-    /// invalid strings.
+    /// invalid strings. `bareHex` drops the leading # (issue #168: some design
+    /// tools reject pasted values that carry it); it only affects `.hex`.
     static func colorString(red: Double,
                             green: Double,
                             blue: Double,
-                            format: ColorCopyFormat) -> String {
+                            format: ColorCopyFormat,
+                            bareHex: Bool = false) -> String {
         let r = min(max(red, 0), 1)
         let g = min(max(green, 0), 1)
         let b = min(max(blue, 0), 1)
         switch format {
         case .hex:
-            return String(format: "#%02X%02X%02X",
+            return String(format: bareHex ? "%02X%02X%02X" : "#%02X%02X%02X",
                           Int((r * 255).rounded()),
                           Int((g * 255).rounded()),
                           Int((b * 255).rounded()))

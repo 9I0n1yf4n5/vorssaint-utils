@@ -8,6 +8,8 @@ struct PanelWindowLayoutView: View {
     @ObservedObject private var permissions = Permissions.shared
     @ObservedObject private var service = WindowLayoutService.shared
     @AppStorage(DefaultsKey.windowLayoutShortcutsEnabled) private var shortcutsEnabled = true
+    @AppStorage(DefaultsKey.windowLayoutHiddenActions) private var hiddenActionsRaw = ""
+    @State private var editingActions = false
 
     var onClose: () -> Void
 
@@ -44,6 +46,20 @@ struct PanelWindowLayoutView: View {
             Label(text.title, systemImage: "rectangle.3.group")
                 .font(.system(size: 12, weight: .semibold))
             Spacer()
+            // Same tune affordance as the quick panel: most people use a
+            // handful of layouts, so actions can be hidden from the grid.
+            // Hiding never touches an assigned shortcut.
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) { editingActions.toggle() }
+            } label: {
+                Image(systemName: editingActions ? "checkmark.circle.fill" : "slider.horizontal.3")
+                    .font(.system(size: 14))
+                    .foregroundStyle(editingActions ? Color.accentColor : Color.secondary)
+                    .frame(width: 22, height: 22)
+            }
+            .buttonStyle(.plain)
+            .help(l10n.s.menuSettings)
+            .accessibilityLabel(l10n.s.menuSettings)
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 14))
@@ -52,7 +68,18 @@ struct PanelWindowLayoutView: View {
             }
             .buttonStyle(.plain)
             .help(l10n.s.uninstallerCancel)
+            .accessibilityLabel(l10n.s.menuClose)
         }
+    }
+
+    private var hiddenActions: Set<WindowLayoutAction> {
+        WindowLayoutAction.hiddenActions(from: hiddenActionsRaw)
+    }
+
+    private func toggleHidden(_ action: WindowLayoutAction) {
+        var hidden = hiddenActions
+        if !hidden.insert(action).inserted { hidden.remove(action) }
+        hiddenActionsRaw = WindowLayoutAction.hiddenActionsStorageValue(hidden)
     }
 
     private var intro: some View {
@@ -89,37 +116,50 @@ struct PanelWindowLayoutView: View {
         .panelCard()
     }
 
+    @ViewBuilder
     private func actionGroup(title groupTitle: String, actions: [WindowLayoutAction]) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(groupTitle.uppercased())
-                .font(.system(size: 9.5, weight: .bold))
-                .foregroundStyle(.tertiary)
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 7) {
-                ForEach(actions) { action in
-                    Button {
-                        service.apply(action)
-                    } label: {
-                        VStack(spacing: 2) {
-                            Label(title(for: action), systemImage: symbol(for: action))
-                                .font(.system(size: 10.5, weight: .semibold))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.82)
-                            if shortcutsEnabled, action.supportsShortcut {
-                                Text(action.savedShortcut.displayString)
-                                    .font(.system(size: 9, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
+        let hidden = hiddenActions
+        let shown = editingActions ? actions : actions.filter { !hidden.contains($0) }
+        if !shown.isEmpty {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(groupTitle.uppercased())
+                    .font(.system(size: 9.5, weight: .bold))
+                    .foregroundStyle(.tertiary)
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 7) {
+                    ForEach(shown) { action in
+                        Button {
+                            if editingActions {
+                                withAnimation(.easeOut(duration: 0.15)) { toggleHidden(action) }
+                            } else {
+                                service.apply(action)
                             }
+                        } label: {
+                            VStack(spacing: 2) {
+                                Label(title(for: action), systemImage: editingActions
+                                        ? (hidden.contains(action) ? "eye.slash" : "eye")
+                                        : symbol(for: action))
+                                    .font(.system(size: 10.5, weight: .semibold))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.82)
+                                if shortcutsEnabled, action.supportsShortcut,
+                                   let shortcut = action.savedShortcut {
+                                    Text(shortcut.displayString)
+                                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                                .frame(maxWidth: .infinity, minHeight: 28)
+                                .opacity(editingActions && hidden.contains(action) ? 0.45 : 1)
                         }
-                            .frame(maxWidth: .infinity, minHeight: 28)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(!permissions.accessibility && !editingActions)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(!permissions.accessibility)
                 }
             }
+            .panelCard()
         }
-        .panelCard()
     }
 
     private func title(for action: WindowLayoutAction) -> String {

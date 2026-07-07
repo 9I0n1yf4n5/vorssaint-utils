@@ -116,11 +116,34 @@ enum MixerRoutingSupport {
             && targetOutputDeviceUID != defaultOutputDeviceUID
     }
 
+    /// Pro audio hosts (DAWs and live rack hosts) own their output device,
+    /// clock and latency chain; the mixer's stereo-mixdown tap mutes their
+    /// real output and replays it elsewhere, which silences them outright
+    /// (issue #170: Logic and rack hosts stopped playing once routed). They
+    /// are never tapped, so they keep their own audio path and stay out of
+    /// the mixer list.
+    private static let proAudioBundlePrefixes = [
+        "com.apple.logic",       // Logic Pro
+        "com.apple.garageband",
+        "com.apple.mainstage",
+        "com.ableton.",          // Live
+        "com.avid.",             // Pro Tools
+        "com.cockos.reaper",
+        "com.steinberg.",        // Cubase, Nuendo, Dorico
+        "com.presonus.",         // Studio One
+        "com.bitwig.",
+        "com.image-line.",       // FL Studio
+        "com.motu.",             // Digital Performer
+    ]
+
     static func bypassesProcessTap(bundleIdentifier: String?, name: String) -> Bool {
         let bundle = (bundleIdentifier ?? "")
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
             .lowercased()
         if bundle == "us.zoom.xos" || bundle.hasPrefix("us.zoom.") {
+            return true
+        }
+        if proAudioBundlePrefixes.contains(where: { bundle.hasPrefix($0) }) {
             return true
         }
 
@@ -131,6 +154,28 @@ enum MixerRoutingSupport {
         return normalizedName == "zoom"
             || normalizedName == "zoom.us"
             || normalizedName == "zoom workplace"
+    }
+
+    /// Ordering for mixer rows: display name, then id. Swift's sort is not
+    /// stable, so two apps with the same display name need the explicit
+    /// tie-break or their rows can swap places between two refreshes.
+    static func displayOrderedBefore(name: String, id: String,
+                                     otherName: String, otherID: String) -> Bool {
+        switch name.localizedCaseInsensitiveCompare(otherName) {
+        case .orderedAscending: return true
+        case .orderedDescending: return false
+        case .orderedSame: return id < otherID
+        }
+    }
+
+    /// Ordering for device lists: the default device first, then display name,
+    /// then uid — deterministic even for identically named devices (two pairs
+    /// of the same headphone model, two identical USB interfaces).
+    static func deviceDisplayOrderedBefore(isDefault: Bool, name: String, uid: String,
+                                           otherIsDefault: Bool, otherName: String,
+                                           otherUID: String) -> Bool {
+        if isDefault != otherIsDefault { return isDefault }
+        return displayOrderedBefore(name: name, id: uid, otherName: otherName, otherID: otherUID)
     }
 
     static func resolveInputDevice(preferredUID: String?,

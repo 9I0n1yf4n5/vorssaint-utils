@@ -25,6 +25,10 @@ final class QuickLauncherService: ObservableObject {
 
     @Published private(set) var shortcutRegistrationFailed = false
     @Published var isEditing = false
+    /// The tile whose inline options card is open in edit mode. Lives here
+    /// (not in the view) so the Esc key monitor can close the card first,
+    /// before leaving edit mode and before hiding the panel.
+    @Published var editingOptionsItem: QuickLauncherItem?
     /// A utility view (Homebrew, Uninstaller…) currently hosted INSIDE the
     /// launcher, replacing the grid. Everything happens in this panel; the
     /// menu bar popover is never involved.
@@ -90,6 +94,9 @@ final class QuickLauncherService: ObservableObject {
         var ids = QuickToolsSupport.hiddenIDs(from: hiddenItemsRaw)
         if hidden {
             ids.insert(item.rawValue)
+            // Hiding the tile whose options card is open would orphan the
+            // card below a grid that no longer shows its owner.
+            if editingOptionsItem == item { editingOptionsItem = nil }
         } else {
             ids.remove(item.rawValue)
         }
@@ -112,6 +119,7 @@ final class QuickLauncherService: ObservableObject {
         let panel = ensurePanel()
         presentationID = UUID()
         isEditing = false
+        editingOptionsItem = nil
         activeUtility = nil
         selectedIndex = visibleItems.isEmpty ? nil : 0
         position(panel)
@@ -128,12 +136,33 @@ final class QuickLauncherService: ObservableObject {
     func hide() {
         removeMonitors()
         isEditing = false
+        editingOptionsItem = nil
         activeUtility = nil
         panel?.orderOut(nil)
     }
 
     func closeUtility() {
         activeUtility = nil
+    }
+
+    /// Hands key focus back after a modal dialog ran on top of the launcher
+    /// (choosing a file in Media, for example), so Esc and the keyboard
+    /// shortcuts keep working without an extra click.
+    func refocusAfterModal() {
+        guard let panel, panel.isVisible else { return }
+        panel.makeKey()
+    }
+
+    /// The single owner of the dismissal policy: the bare grid behaves like a
+    /// transient HUD, but with a utility hosted inside the launcher is a
+    /// working window that must survive its own dialogs, admin prompts and
+    /// clicks in other apps (dragging a file into Media). Every dismissal
+    /// trigger consults this, so a future one cannot forget the rule.
+    private var dismissesOnOutsideInteraction: Bool {
+        // Edit mode counts as a working window too: the clamshell toggle in
+        // the Keep awake options card can raise an admin password prompt,
+        // and that prompt's activation must not tear the launcher down.
+        activeUtility == nil && !isEditing
     }
 
     /// Re-fits the panel to its content when the grid gives way to a hosted
@@ -278,6 +307,10 @@ final class QuickLauncherService: ObservableObject {
             if event.keyCode == UInt16(kVK_Escape) {
                 if self.activeUtility != nil {
                     self.activeUtility = nil
+                } else if self.editingOptionsItem != nil {
+                    // An open options card closes first; a second Esc then
+                    // leaves edit mode, and a third hides the panel.
+                    self.editingOptionsItem = nil
                 } else if self.isEditing {
                     self.isEditing = false
                 } else {
@@ -310,16 +343,21 @@ final class QuickLauncherService: ObservableObject {
                 return event
             }
         }
+        // With a utility hosted inside (Media, Homebrew, Uninstaller…) the
+        // launcher is a small working window, not a transient HUD: it must
+        // survive its own file dialogs and admin prompts, and clicks in other
+        // apps to drag a file onto its drop zones. Only the bare grid keeps
+        // the Spotlight-like dismiss-on-outside-click behavior.
         let mouseEvents: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
         localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: mouseEvents) { [weak self, weak panel] event in
-            guard let self, let panel, panel.isVisible else { return event }
+            guard let self, let panel, panel.isVisible, self.dismissesOnOutsideInteraction else { return event }
             if event.window !== panel, !Self.mouseIsInside(panel) {
                 self.hide()
             }
             return event
         }
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: mouseEvents) { [weak self, weak panel] event in
-            guard let self, let panel, panel.isVisible else { return }
+            guard let self, let panel, panel.isVisible, self.dismissesOnOutsideInteraction else { return }
             if event.windowNumber != panel.windowNumber, !Self.mouseIsInside(panel) {
                 self.hide()
             }
@@ -330,6 +368,7 @@ final class QuickLauncherService: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             guard let self,
+                  self.dismissesOnOutsideInteraction,
                   let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                   app.bundleIdentifier != Bundle.main.bundleIdentifier
             else { return }

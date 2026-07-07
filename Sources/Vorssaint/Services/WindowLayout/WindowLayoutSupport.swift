@@ -94,8 +94,40 @@ enum WindowLayoutAction: String, CaseIterable, Identifiable {
         }
     }
 
-    var savedShortcut: GlobalShortcut {
-        GlobalShortcut.saved(for: shortcutKey, fallback: defaultShortcut)
+    /// Stored value meaning the user removed this action's shortcut (issue
+    /// #169): most people use a handful of layouts, and every registered
+    /// hotkey occupies a system-wide key combo other apps then cannot use.
+    static let clearedShortcutStorageValue = "none"
+
+    /// Resolves a stored shortcut value: the saved shortcut, the default when
+    /// nothing was saved or the value is corrupt, or nil when the user
+    /// explicitly cleared it.
+    static func resolvedShortcut(storedValue: String?,
+                                 defaultShortcut: GlobalShortcut) -> GlobalShortcut? {
+        guard let storedValue else { return defaultShortcut }
+        if storedValue == clearedShortcutStorageValue { return nil }
+        return GlobalShortcut(storageValue: storedValue) ?? defaultShortcut
+    }
+
+    /// The action's effective shortcut; nil when the user removed it.
+    var savedShortcut: GlobalShortcut? {
+        Self.resolvedShortcut(storedValue: UserDefaults.standard.string(forKey: shortcutKey),
+                              defaultShortcut: defaultShortcut)
+    }
+
+    /// Which actions the user hid from the layout grid, parsed from the
+    /// stored comma-separated list. Unknown names are dropped, so a value
+    /// written by a newer version never corrupts the set. Hiding only
+    /// declutters the grid; an assigned shortcut keeps working.
+    static func hiddenActions(from storedValue: String) -> Set<WindowLayoutAction> {
+        Set(storedValue.split(separator: ",")
+            .compactMap { WindowLayoutAction(rawValue: $0.trimmingCharacters(in: .whitespaces)) })
+    }
+
+    /// The storage value for a hidden set: sorted so equal sets always
+    /// serialize identically.
+    static func hiddenActionsStorageValue(_ actions: Set<WindowLayoutAction>) -> String {
+        actions.map(\.rawValue).sorted().joined(separator: ",")
     }
 
     func title(_ text: WindowLayoutFeatureStrings) -> String {

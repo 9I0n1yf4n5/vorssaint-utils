@@ -73,9 +73,7 @@ struct MenuPanelView: View {
     @AppStorage(DefaultsKey.panelShowKeepAwake) private var showKeepAwake = true
     @AppStorage(DefaultsKey.panelShowUtilities) private var showUtilities = true
     @AppStorage(DefaultsKey.panelShowControls) private var showControls = true
-    @AppStorage(DefaultsKey.panelNavigationEnabled) private var panelNavigationEnabled = true
     @AppStorage(DefaultsKey.panelSectionOrder) private var sectionOrderRaw = ""
-    @State private var contentHeight: CGFloat = 0
     @State private var navigableContentHeight: CGFloat = 0
     @State private var metricContentHeight: CGFloat = 0
     @State private var updateBannerHeight: CGFloat = 0
@@ -92,10 +90,8 @@ struct MenuPanelView: View {
         Group {
             if selectedMetric != nil {
                 metricPanel
-            } else if panelNavigationEnabled {
-                navigablePanel
             } else {
-                classicPanel
+                navigablePanel
             }
         }
         .onAppear {
@@ -128,19 +124,13 @@ struct MenuPanelView: View {
         if let selectedMetric {
             return selectedMetric.monitorNeeds
         }
-        if panelNavigationEnabled {
-            switch activeSection {
-            case .system: return SystemMonitorPanelNeeds(system: true)
-            case .network: return SystemMonitorPanelNeeds(network: true)
-            case .disk: return SystemMonitorPanelNeeds(disk: true)
-            case .power: return SystemMonitorPanelNeeds(power: true)
-            default: return .none
-            }
+        switch activeSection {
+        case .system: return SystemMonitorPanelNeeds(system: true)
+        case .network: return SystemMonitorPanelNeeds(network: true)
+        case .disk: return SystemMonitorPanelNeeds(disk: true)
+        case .power: return SystemMonitorPanelNeeds(power: true)
+        default: return .none
         }
-        return SystemMonitorPanelNeeds(system: showSystem,
-                                       network: showNetwork,
-                                       disk: showDisk,
-                                       power: showPower)
     }
 
     private func syncMonitorSampling() {
@@ -160,30 +150,6 @@ struct MenuPanelView: View {
             selectedMetric = metric
             selectedSection = metric.panelSection
         }
-    }
-
-    private var classicPanel: some View {
-        // Hosted in a custom overlay-scroller container. SwiftUI's own ScrollView
-        // reserves a legacy scroller gutter on the right when the system is set to
-        // always show scroll bars, pushing the fixed-width content off-center. An
-        // overlay scroller floats over the content and reserves no space, so the
-        // panel stays centered whether or not it needs to scroll. The hosting
-        // view reports its natural height after layout so section changes resize
-        // the popover without reserving a scroller gutter.
-        OverlayScrollView(measuredHeight: $contentHeight) {
-            VStack(alignment: .leading, spacing: 12) {
-                UpdateBanner()
-                header
-                ForEach(visibleSections) { id in
-                    section(for: id)
-                }
-                footer
-            }
-            .padding(12)
-            .frame(width: 332)
-        }
-        .frame(width: 332, height: min(contentHeight == 0 ? 480 : contentHeight, maxHeight))
-        .panelGlassSurface()
     }
 
     private var navigablePanel: some View {
@@ -471,8 +437,11 @@ private struct MenuPanelHeader: View {
 }
 
 private enum UtilityPanelItem: String, PanelOrderItem, Identifiable {
-    case homebrew, media, clipboard, windowLayout, uninstaller, cleanURL, cleaning,
-         screenOCR, colorPicker, micMute, quickLauncher
+    // Case order IS the default panel order (PanelLayout.itemOrder falls back
+    // to allCases): the quick panel leads because it is the fastest way into
+    // every other tool. Saved orders are untouched.
+    case quickLauncher, homebrew, media, clipboard, windowLayout, uninstaller, cleanURL,
+         cleaning, screenOCR, colorPicker, micMute
 
     var id: String { rawValue }
 }
@@ -672,6 +641,7 @@ struct UtilitiesSection: View {
                                 isEditing: editing,
                                 showsDragHandle: true,
                                 visibility: $showClipboard,
+                                shortcutHint: shortcutHint(.clipboard),
                                 action: {
                                     PanelInteractionState.shared.keepsPopoverOpen = true
                                     showClipboardPanel = true
@@ -730,6 +700,7 @@ struct UtilitiesSection: View {
                                 needsAttention: !permissions.screenRecording,
                                 permissionButtonTitle: l10n.s.permissionRequest,
                                 permissionAction: permissions.screenRecording ? nil : grantScreenRecordingPermission,
+                                shortcutHint: shortcutHint(.screenOCR),
                                 action: {
                                     appDelegate()?.closePopover()
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -743,6 +714,7 @@ struct UtilitiesSection: View {
                                 isEditing: editing,
                                 showsDragHandle: true,
                                 visibility: $showColorPicker,
+                                shortcutHint: shortcutHint(.colorPicker),
                                 action: {
                                     appDelegate()?.closePopover()
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -756,6 +728,7 @@ struct UtilitiesSection: View {
                                 isEditing: editing,
                                 showsDragHandle: true,
                                 visibility: $showMicMute,
+                                shortcutHint: shortcutHint(.micMute),
                                 action: {
                                     MicMuteService.shared.toggle()
                                 })
@@ -766,6 +739,7 @@ struct UtilitiesSection: View {
                                 isEditing: editing,
                                 showsDragHandle: true,
                                 visibility: $showQuickLauncher,
+                                shortcutHint: shortcutHint(.quickLauncher),
                                 action: {
                                     appDelegate()?.closePopover()
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -773,6 +747,16 @@ struct UtilitiesSection: View {
                                     }
                                 })
         }
+    }
+
+    /// The row's key hint: only when the shortcut is actually REGISTERED,
+    /// using the same gates the services use (the clipboard needs both the
+    /// feature and its shortcut toggle), so the badge never advertises a
+    /// combo that does nothing.
+    private func shortcutHint(_ role: GlobalShortcutRole) -> String? {
+        guard role.requiredEnableKeys.allSatisfy({ UserDefaults.standard.bool(forKey: $0) })
+        else { return nil }
+        return role.savedShortcut.displayString
     }
 
     private var ocrCaption: String {
@@ -1356,6 +1340,9 @@ private struct UtilityActionButton: View {
     var needsAttention = false
     var permissionButtonTitle: String? = nil
     var permissionAction: (() -> Void)? = nil
+    /// The feature's enabled global shortcut, shown as a quiet key hint so
+    /// the panel row doubles as a reminder that the keyboard path exists.
+    var shortcutHint: String? = nil
     let action: () -> Void
 
     var body: some View {
@@ -1410,10 +1397,23 @@ private struct UtilityActionButton: View {
                     PanelHiddenBadge()
                 }
                 PanelInlineHideButton(isVisible: visibility)
-            } else if showChevron {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+            } else {
+                if let shortcutHint {
+                    Text(shortcutHint)
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(Color.primary.opacity(0.06))
+                        )
+                }
+                if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
     }
@@ -1745,8 +1745,8 @@ struct UpdateBanner: View {
                 )
             }
             .buttonStyle(.plain)
-        case .downloading:
-            progressRow(l10n.s.updateDownloading)
+        case let .downloading(progress):
+            progressRow(l10n.s.updateDownloading, fraction: progress)
         case .installing:
             progressRow(l10n.s.updateInstalling)
         default:
@@ -1754,11 +1754,24 @@ struct UpdateBanner: View {
         }
     }
 
-    private func progressRow(_ text: String) -> some View {
+    /// With a known fraction the row shows a real bar and percentage; while
+    /// the size is unknown (or for the install step) it keeps the spinner.
+    private func progressRow(_ text: String, fraction: Double? = nil) -> some View {
         HStack(spacing: 8) {
-            ProgressView().controlSize(.small)
+            if fraction == nil {
+                ProgressView().controlSize(.small)
+            }
             Text(text).font(.system(size: 11.5, weight: .medium))
-            Spacer()
+            if let fraction {
+                ProgressView(value: fraction)
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity)
+                Text("\(Int(fraction * 100))%")
+                    .font(.system(size: 10.5, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            } else {
+                Spacer()
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)

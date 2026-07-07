@@ -8,10 +8,10 @@ import Darwin
 /// a human name. Shared by the resource breakdown and the volume mixer, so
 /// helper processes roll up into their app with its proper icon.
 enum ResponsibleProcess {
-    private static let iconCache: NSCache<NSNumber, NSImage> = {
-        let cache = NSCache<NSNumber, NSImage>()
+    private static let iconCache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 80
-        cache.totalCostLimit = ImageThumbnailer.estimatedBitmapCost() * 80
+        cache.totalCostLimit = ImageThumbnailer.estimatedBitmapCost(pointSize: 32) * 80
         return cache
     }()
 
@@ -46,17 +46,22 @@ enum ResponsibleProcess {
         return fallback.trimmingCharacters(in: .whitespaces)
     }
 
-    static func icon(for pid: pid_t) -> NSImage {
-        let key = NSNumber(value: pid)
+    /// The icon is cached as a bitmap of the requested point size, so callers
+    /// that draw it larger (the mixer rows) must ask for that size or the
+    /// upscale looks blurry.
+    static func icon(for pid: pid_t,
+                     pointSize: CGFloat = ImageThumbnailer.defaultPointSize) -> NSImage {
+        let key = "\(pid)@\(Int(pointSize))" as NSString
+        let cost = ImageThumbnailer.estimatedBitmapCost(pointSize: pointSize)
         if let cached = iconCache.object(forKey: key) { return cached }
-        if isCurrentApp(pid: pid), let image = currentAppIcon() {
-            iconCache.setObject(image, forKey: key, cost: ImageThumbnailer.estimatedBitmapCost())
+        if isCurrentApp(pid: pid), let image = currentAppIcon(pointSize: pointSize) {
+            iconCache.setObject(image, forKey: key, cost: cost)
             return image
         }
         let source = NSRunningApplication(processIdentifier: pid)?.icon
             ?? NSWorkspace.shared.icon(for: .unixExecutable)
-        let image = ImageThumbnailer.thumbnail(for: source) ?? source
-        iconCache.setObject(image, forKey: key, cost: ImageThumbnailer.estimatedBitmapCost())
+        let image = ImageThumbnailer.thumbnail(for: source, pointSize: pointSize) ?? source
+        iconCache.setObject(image, forKey: key, cost: cost)
         return image
     }
 
@@ -73,21 +78,21 @@ enum ResponsibleProcess {
         return app.bundleURL?.standardizedFileURL == Bundle.main.bundleURL.standardizedFileURL
     }
 
-    private static func currentAppIcon() -> NSImage? {
+    private static func currentAppIcon(pointSize: CGFloat) -> NSImage? {
         if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-           let image = ImageThumbnailer.thumbnail(for: url) {
+           let image = ImageThumbnailer.thumbnail(for: url, pointSize: pointSize) {
             return image
         }
         if let url = Bundle.main.url(forResource: "BrandMark", withExtension: "png"),
-           let image = ImageThumbnailer.thumbnail(for: url) {
+           let image = ImageThumbnailer.thumbnail(for: url, pointSize: pointSize) {
             return image
         }
         if let url = Bundle.main.url(forResource: "MenuBarIcon@2x", withExtension: "png"),
-           let image = ImageThumbnailer.thumbnail(for: url) {
+           let image = ImageThumbnailer.thumbnail(for: url, pointSize: pointSize) {
             return image
         }
         if let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
-           let image = ImageThumbnailer.thumbnail(for: url) {
+           let image = ImageThumbnailer.thumbnail(for: url, pointSize: pointSize) {
             return image
         }
         return nil

@@ -11,10 +11,10 @@ import UniformTypeIdentifiers
 struct MonitorSettings: View {
     @ObservedObject private var l10n = L10n.shared
 
-    @AppStorage(DefaultsKey.menuBarMemory) private var menuBarMemory = false
     @AppStorage(DefaultsKey.menuBarCombineTemperatures) private var combineTemperatures = true
     @AppStorage(DefaultsKey.menuBarSeparateMetrics) private var separateMetrics = false
-    @AppStorage(DefaultsKey.menuBarMemoryStyle) private var memoryStyle = "percent"
+    @AppStorage(DefaultsKey.menuBarMetricSpacing) private var metricSpacing = "standard"
+    @AppStorage(DefaultsKey.menuBarHideIconWithMetrics) private var hideIconWithMetrics = false
     @AppStorage(DefaultsKey.monitorInterval) private var interval = 2
     @AppStorage(DefaultsKey.temperatureUnit) private var temperatureUnit = TemperatureUnit.celsius.rawValue
     @AppStorage(DefaultsKey.monitorShowFanControlBeta) private var showFanControlBeta = false
@@ -36,16 +36,20 @@ struct MonitorSettings: View {
                 Text(l10n.s.monitorCombineTemperaturesCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Picker(l10n.s.menuBarSpacingLabel, selection: $metricSpacing) {
+                    Text(l10n.s.menuBarSpacingStandard).tag("standard")
+                    Text(l10n.s.menuBarSpacingCompact).tag("compact")
+                }
+                .pickerStyle(.segmented)
+                Toggle(l10n.s.menuBarHideIconToggle, isOn: $hideIconWithMetrics)
+                Text(l10n.s.menuBarHideIconCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Toggle(l10n.s.monitorSeparateMenuBarMetrics, isOn: $separateMetrics)
                 Text(l10n.s.monitorSeparateMenuBarMetricsCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 MenuBarMetricOrderEditor()
-                if menuBarMemory {
-                    Toggle(l10n.s.monitorMemoryPressureDot,
-                           isOn: Binding(get: { memoryStyle != "percent" },
-                                         set: { memoryStyle = $0 ? "both" : "percent" }))
-                }
                 Text(l10n.s.monitorMenuBarCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -98,7 +102,6 @@ struct MonitorSettings: View {
         .onAppear {
             SystemMonitor.shared.panelDidAppear()
             interval = Defaults.sanitizedMonitorInterval(interval)
-            memoryStyle = Defaults.sanitizedMenuBarMemoryStyle(memoryStyle)
             if TemperatureUnit(rawValue: temperatureUnit) == nil {
                 temperatureUnit = TemperatureUnit.celsius.rawValue
             }
@@ -156,6 +159,10 @@ private struct MenuBarMetricOrderEditor: View {
                     }
                     .frame(height: 32)
 
+                    if metric == .memory {
+                        MemoryMenuBarOrderOption()
+                    }
+
                     if metric == .network {
                         NetworkMenuBarOrderOption()
                     }
@@ -172,6 +179,66 @@ private struct MenuBarMetricOrderEditor: View {
     }
 }
 
+// Contributed in PR #179: the memory pressure-dot option lives under the
+// Memory row, matching the Network row's inline option.
+/// Inline per-metric option row: caption on the left, a switch on the right,
+/// indented under its metric. The switch is a hand-rolled capsule Button on
+/// purpose: a native Toggle inside the reorderable metric list never receives
+/// the click (the row's drag handling swallows it), while a plain Button does.
+private struct MetricRowOptionToggle: View {
+    let label: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            Button {
+                isOn.toggle()
+            } label: {
+                ZStack(alignment: isOn ? .trailing : .leading) {
+                    Capsule()
+                        .fill(isOn ? Color.accentColor : Color.secondary.opacity(0.28))
+                        .frame(width: 28, height: 16)
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 12, height: 12)
+                        .padding(2)
+                }
+                .frame(width: 30, height: 20)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(label)
+            .accessibilityLabel(label)
+            .accessibilityValue(isOn ? "1" : "0")
+        }
+        .padding(.leading, 58)
+        .padding(.trailing, 4)
+        .padding(.bottom, 7)
+    }
+}
+
+private struct MemoryMenuBarOrderOption: View {
+    @ObservedObject private var l10n = L10n.shared
+    @AppStorage(DefaultsKey.menuBarMemory) private var menuBarMemory = false
+    @AppStorage(DefaultsKey.menuBarMemoryStyle) private var memoryStyle = "percent"
+
+    var body: some View {
+        if menuBarMemory {
+            MetricRowOptionToggle(label: l10n.s.monitorMemoryPressureDot,
+                                  isOn: Binding(
+                                      get: { Defaults.sanitizedMenuBarMemoryStyle(memoryStyle) != "percent" },
+                                      set: { memoryStyle = $0 ? "both" : "percent" }))
+                .onAppear {
+                    memoryStyle = Defaults.sanitizedMenuBarMemoryStyle(memoryStyle)
+                }
+        }
+    }
+}
+
 private struct NetworkMenuBarOrderOption: View {
     @ObservedObject private var l10n = L10n.shared
     @AppStorage(DefaultsKey.menuBarNetwork) private var menuBarNetwork = false
@@ -179,32 +246,7 @@ private struct NetworkMenuBarOrderOption: View {
 
     var body: some View {
         if menuBarNetwork {
-            HStack(spacing: 8) {
-                Text(l10n.s.monitorNetworkUploadFirst)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-                Button {
-                    uploadFirst.toggle()
-                } label: {
-                    ZStack(alignment: uploadFirst ? .trailing : .leading) {
-                        Capsule()
-                            .fill(uploadFirst ? Color.accentColor : Color.secondary.opacity(0.28))
-                            .frame(width: 28, height: 16)
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 12, height: 12)
-                            .padding(2)
-                    }
-                    .frame(width: 30, height: 20)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(l10n.s.monitorNetworkUploadFirst)
-            }
-            .padding(.leading, 58)
-            .padding(.trailing, 4)
-            .padding(.bottom, 7)
+            MetricRowOptionToggle(label: l10n.s.monitorNetworkUploadFirst, isOn: $uploadFirst)
         }
     }
 }
@@ -231,6 +273,8 @@ private struct MenuBarMetricVisibilityToggle: View {
         }
         .buttonStyle(.plain)
         .help(shown ? l10n.s.panelHideItem : l10n.s.panelShowItem)
+        .accessibilityLabel(shown ? l10n.s.panelHideItem : l10n.s.panelShowItem)
+        .accessibilityValue(metric.title(l10n.s))
     }
 }
 

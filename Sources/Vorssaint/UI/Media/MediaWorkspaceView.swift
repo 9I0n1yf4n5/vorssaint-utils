@@ -277,12 +277,17 @@ struct MediaWorkspaceView: View {
                     Text("JPEG").tag(MediaImageFormat.jpeg.rawValue)
                     Text("HEIC").tag(MediaImageFormat.heic.rawValue)
                     Text("PNG").tag(MediaImageFormat.png.rawValue)
+                    Text("PDF").tag(MediaImageFormat.pdf.rawValue)
                 }
                 .pickerStyle(.segmented)
                 compressionRow(value: $imageQuality)
                 stepperInt(l10n.s.mediaMaxSize, value: $imageMaxDimension, range: 256...7680, step: 128, suffix: "px")
-                Toggle(l10n.s.mediaStripMetadata, isOn: $imageStripMetadata)
-                    .toggleStyle(.checkbox)
+                // PDF output never carries EXIF (the image is re-encoded
+                // into the document), so the toggle would be a dead control.
+                if MediaImageFormat.sanitized(imageFormatRaw) != .pdf {
+                    Toggle(l10n.s.mediaStripMetadata, isOn: $imageStripMetadata)
+                        .toggleStyle(.checkbox)
+                }
             }
             .panelCard()
         case .textExtractor:
@@ -364,6 +369,12 @@ struct MediaWorkspaceView: View {
                             ByteCountFormatter.string(fromByteCount: result.outputBytes, countStyle: .file)))
                     .font(.system(size: compact ? 9.5 : 10.5))
                     .foregroundStyle(.secondary)
+                if MediaSupport.outputGrew(originalBytes: result.originalBytes,
+                                           outputBytes: result.outputBytes) {
+                    Text(l10n.s.mediaResultGrewCaption)
+                        .font(.system(size: compact ? 9.5 : 10.5))
+                        .foregroundStyle(.secondary)
+                }
             }
             if let text = result.text {
                 Text(text.isEmpty ? l10n.s.mediaEmptyText : text)
@@ -511,7 +522,12 @@ struct MediaWorkspaceView: View {
         switch selectedTool {
         case .videoCompressor: return l10n.s.mediaStartVideo
         case .gifMaker: return l10n.s.mediaStartGIF
-        case .imageCompressor: return l10n.s.mediaStartImage
+        case .imageCompressor:
+            // Choosing PDF changes the file's kind, so the button says what
+            // will actually happen instead of promising compression.
+            return MediaImageFormat.sanitized(imageFormatRaw) == .pdf
+                ? l10n.s.mediaStartConvertPDF
+                : l10n.s.mediaStartImage
         case .textExtractor: return l10n.s.mediaStartText
         }
     }
@@ -538,8 +554,10 @@ struct MediaWorkspaceView: View {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = inputTypes
-        if panel.runModal() == .OK, let url = panel.url {
-            setInput(url)
+        Self.runPanelModal(panel) { response in
+            if response == .OK, let url = panel.url {
+                setInput(url)
+            }
         }
     }
 
@@ -550,9 +568,34 @@ struct MediaWorkspaceView: View {
         let fallback = defaultOutputURL(for: inputURL, tool: selectedTool)
         panel.directoryURL = (outputURL ?? fallback)?.deletingLastPathComponent()
         panel.nameFieldStringValue = (outputURL ?? fallback)?.lastPathComponent ?? ""
-        if panel.runModal() == .OK, let url = panel.url {
-            outputURL = url
-            outputWasChosenManually = true
+        Self.runPanelModal(panel) { response in
+            if response == .OK, let url = panel.url {
+                outputURL = url
+                outputWasChosenManually = true
+            }
+        }
+    }
+
+    /// The hosts of this view (menu popover, quick launcher) never activate
+    /// the app, and a modal file dialog in an inactive app takes no clicks or
+    /// keys (only Cancel reacts). Activate first and let the run loop turn so
+    /// the activation lands before the modal session starts, then hand key
+    /// focus back to the launcher.
+    /// One dialog at a time: the modal now starts a run-loop turn after the
+    /// click, so a double-click (or clicking both pickers quickly) would queue
+    /// a second identical dialog behind the first without this guard.
+    private static var panelModalActive = false
+
+    private static func runPanelModal(_ panel: NSSavePanel,
+                                      completion: @escaping (NSApplication.ModalResponse) -> Void) {
+        guard !panelModalActive else { return }
+        panelModalActive = true
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            let response = panel.runModal()
+            panelModalActive = false
+            QuickLauncherService.shared.refocusAfterModal()
+            completion(response)
         }
     }
 
@@ -570,7 +613,16 @@ struct MediaWorkspaceView: View {
                 url = nil
             }
             if let url {
-                DispatchQueue.main.async { setInput(url) }
+                // The open panel filters by type; drops must too, or a PDF
+                // dropped on the image tool silently rasterizes to page one.
+                let contentType = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType
+                DispatchQueue.main.async {
+                    if MediaSupport.inputMatchesTool(contentType: contentType, inputTypes: inputTypes) {
+                        setInput(url)
+                    } else {
+                        media.rejectUnsupportedInput()
+                    }
+                }
             }
         }
         return true
@@ -684,6 +736,7 @@ struct MediaWorkspaceView: View {
             case .jpeg: return .jpeg
             case .heic: return .heic
             case .png: return .png
+            case .pdf: return .pdf
             }
         case .textExtractor: return .plainText
         }

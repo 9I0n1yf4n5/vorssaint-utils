@@ -54,8 +54,13 @@ enum WindowEnumerator {
         var seen = Set<CGWindowID>()
         var windows: [SwitcherItem] = []
 
+        // No cap during enumeration: the raw window-server order is not
+        // "visible first" (windows parked on other Spaces can come before the
+        // frontmost app), so truncating here silently drops whole apps on
+        // busy Macs (issue #172). Everything is collected, ordered by the
+        // activation MRU, and only then trimmed, so the cap always cuts the
+        // least recently used tail.
         for info in raw {
-            guard windows.count < maximumCount else { break }
             guard let layer = (info[kCGWindowLayer as String] as? NSNumber)?.intValue, layer == 0,
                   let windowID = (info[kCGWindowNumber as String] as? NSNumber)?.uint32Value,
                   !seen.contains(windowID),
@@ -119,15 +124,23 @@ enum WindowEnumerator {
                                        snapshots: accessibilityWindows,
                                        regularApps: regularApps,
                                        seen: &seen,
-                                       filterPID: filterPID,
-                                       maximumCount: maximumCount)
+                                       filterPID: filterPID)
         if includeWindowlessFinder {
             appendWindowlessFinder(to: &windows, regularApps: regularApps)
         }
         if groupByApp {
             windows = groupWindowsByApp(windows)
         }
-        return orderByActivation(windows)
+        let ordered = orderByActivation(windows)
+        guard ordered.count > maximumCount else { return ordered }
+        var trimmed = Array(ordered.prefix(maximumCount))
+        // The windowless Finder tile is an explicit user choice; it must not
+        // vanish just because the list happens to be full.
+        if includeWindowlessFinder,
+           let finderTile = ordered.dropFirst(maximumCount).first(where: { $0.windowID == nil }) {
+            trimmed.append(finderTile)
+        }
+        return trimmed
     }
 
     /// WindowServer can keep stale, titled surfaces around after some apps close
@@ -200,8 +213,7 @@ enum WindowEnumerator {
                                                        snapshots: [pid_t: AccessibilityWindowSnapshotList],
                                                        regularApps: [pid_t: String],
                                                        seen: inout Set<CGWindowID>,
-                                                       filterPID: pid_t?,
-                                                       maximumCount: Int) {
+                                                       filterPID: pid_t?) {
         let tracker = AppActivationTracker.shared
         let pids = snapshots.keys
             .filter { pid in
@@ -216,11 +228,9 @@ enum WindowEnumerator {
             }
 
         for pid in pids {
-            guard windows.count < maximumCount,
-                  let appName = regularApps[pid],
+            guard let appName = regularApps[pid],
                   let list = snapshots[pid] else { continue }
             for entry in list.ordered {
-                guard windows.count < maximumCount else { return }
                 guard !seen.contains(entry.id),
                       let frame = switchableFrame(entry.snapshot.frame,
                                                   fallback: nil,

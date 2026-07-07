@@ -36,10 +36,23 @@ final class FinderCutPaste: ObservableObject {
         let failed: Int
     }
 
+    /// Live state of a move that left its volume (a real copy, not a rename),
+    /// so the HUD can show a progress bar for large transfers (issue #168).
+    /// `fraction` is nil when the batch's byte total is unknown (directories
+    /// in the mix), which the HUD renders as an indeterminate bar.
+    struct MoveProgress: Equatable {
+        let completed: Int
+        let total: Int
+        let currentName: String
+        let fraction: Double?
+    }
+
     /// Files currently held for a move; drives the feedback HUD.
     @Published private(set) var marked: [MarkedItem] = []
     /// Set briefly after a paste so the HUD can confirm the move.
     @Published private(set) var lastResult: MoveResult?
+    /// Set only while a cross-volume move is running; nil for instant moves.
+    @Published private(set) var moveProgress: MoveProgress?
 
     /// Pasteboard change count captured when the cut was made. A ⌘V only turns
     /// into a move while this still matches — if anything else wrote to the
@@ -205,6 +218,7 @@ final class FinderCutPaste: ObservableObject {
     private func applyCut(_ urls: [URL]) {
         guard !urls.isEmpty else { clearMarks(); return }
         moveInProgress = false
+        moveProgress = nil
         marked = urls.map { MarkedItem(url: $0, icon: NSWorkspace.shared.icon(forFile: $0.path)) }
         // Also place the files on the pasteboard so a normal ⌘V elsewhere still
         // works as a copy, and so the move guard has a change count to anchor to.
@@ -233,9 +247,32 @@ final class FinderCutPaste: ObservableObject {
             }
             let dir = URL(fileURLWithPath: destPath, isDirectory: true)
             let fm = FileManager.default
+            let plan = Self.progressPlan(urls: urls, dir: dir)
             var moved = 0, failed = 0
-            for src in urls {
-                if Self.move(src, into: dir, fm: fm) { moved += 1 } else { failed += 1 }
+            var finishedBytes: Int64 = 0
+            for (index, src) in urls.enumerated() {
+                if plan.showsProgress {
+                    self?.publishProgress(generation: generation,
+                                          completed: index, total: urls.count,
+                                          name: src.lastPathComponent,
+                                          fraction: CutPasteProgressSupport.fraction(
+                                              finishedBytes: finishedBytes,
+                                              currentBytes: 0,
+                                              totalBytes: plan.totalBytes))
+                }
+                var poller: DispatchSourceTimer?
+                let success = Self.move(src, into: dir, fm: fm) { dest in
+                    guard plan.showsProgress, plan.totalBytes > 0 else { return }
+                    poller = self?.makeBytePoller(destination: dest,
+                                                  generation: generation,
+                                                  completed: index, total: urls.count,
+                                                  name: src.lastPathComponent,
+                                                  finishedBytes: finishedBytes,
+                                                  totalBytes: plan.totalBytes)
+                }
+                poller?.cancel()
+                finishedBytes += plan.sizes[index] ?? 0
+                if success { moved += 1 } else { failed += 1 }
             }
             DispatchQueue.main.async {
                 self?.finishPaste(generation: generation, moved: moved, failed: failed)
@@ -243,9 +280,85 @@ final class FinderCutPaste: ObservableObject {
         }
     }
 
+    /// Sizes up a batch before moving it. Progress only shows when at least
+    /// one item leaves its volume — everything else is a rename and finishes
+    /// before a bar could even appear. Byte totals only count regular files;
+    /// a directory in the batch makes the total unknowable cheaply, so the
+    /// bar falls back to indeterminate while the item counter keeps moving.
+    private static func progressPlan(urls: [URL],
+                                     dir: URL) -> (showsProgress: Bool, totalBytes: Int64, sizes: [Int64?]) {
+        let destVolume = volumeIdentity(of: dir)
+        var anyCross = false
+        var allRegular = true
+        var sizes: [Int64?] = []
+        var total: Int64 = 0
+        for src in urls {
+            if CutPasteProgressSupport.isCrossVolume(source: volumeIdentity(of: src),
+                                                     destination: destVolume) {
+                anyCross = true
+            }
+            let values = try? src.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+            if values?.isRegularFile == true, let size = values?.fileSize {
+                sizes.append(Int64(size))
+                total += Int64(size)
+            } else {
+                sizes.append(nil)
+                allRegular = false
+            }
+        }
+        return (anyCross, allRegular ? total : 0, sizes)
+    }
+
+    private static func volumeIdentity(of url: URL) -> NSObject? {
+        (try? url.resourceValues(forKeys: [.volumeIdentifierKey]))?.volumeIdentifier as? NSObject
+    }
+
+    /// Samples the growing destination file while `FileManager` copies it, so
+    /// the bar advances within a single large file. Reading the size is one
+    /// stat call and can never disturb the move itself.
+    private func makeBytePoller(destination: URL,
+                                generation: Int,
+                                completed: Int, total: Int,
+                                name: String,
+                                finishedBytes: Int64,
+                                totalBytes: Int64) -> DispatchSourceTimer {
+        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        timer.schedule(deadline: .now() + CutPasteProgressSupport.pollInterval,
+                       repeating: CutPasteProgressSupport.pollInterval)
+        timer.setEventHandler { [weak self] in
+            let attributes = try? FileManager.default.attributesOfItem(atPath: destination.path)
+            let current = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+            self?.publishProgress(generation: generation,
+                                  completed: completed, total: total,
+                                  name: name,
+                                  fraction: CutPasteProgressSupport.fraction(
+                                      finishedBytes: finishedBytes,
+                                      currentBytes: current,
+                                      totalBytes: totalBytes))
+        }
+        timer.resume()
+        return timer
+    }
+
+    private func publishProgress(generation: Int,
+                                 completed: Int, total: Int,
+                                 name: String,
+                                 fraction: Double?) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, generation == self.operationGeneration, self.moveInProgress else { return }
+            self.moveProgress = MoveProgress(completed: completed, total: total,
+                                             currentName: name, fraction: fraction)
+            self.refreshPanel()
+        }
+    }
+
     private func finishPaste(generation: Int, moved: Int, failed: Int) {
         guard generation == operationGeneration else { return }
+        // Invalidate the generation so a progress publish still in flight from
+        // a just-cancelled poller can't revive the moving state after this.
+        operationGeneration += 1
         moveInProgress = false
+        moveProgress = nil
         marked = []
         markedChangeCount = 0
         lastResult = MoveResult(moved: moved, failed: failed)
@@ -253,13 +366,18 @@ final class FinderCutPaste: ObservableObject {
         scheduleResultDismiss()
     }
 
-    private static func move(_ src: URL, into dir: URL, fm: FileManager) -> Bool {
+    /// `willCopy` fires with the final destination just before the actual
+    /// move, and only when one happens (not for no-op moves into the same
+    /// folder), so the caller can watch the destination grow.
+    private static func move(_ src: URL, into dir: URL, fm: FileManager,
+                             willCopy: (URL) -> Void = { _ in }) -> Bool {
         // A no-op move (already in the destination) counts as success.
         if src.deletingLastPathComponent().standardizedFileURL.path == dir.standardizedFileURL.path {
             return true
         }
         guard fm.fileExists(atPath: src.path) else { return false }
         let dest = uniqueDestination(for: src.lastPathComponent, in: dir, fm: fm)
+        willCopy(dest)
         do {
             try fm.moveItem(at: src, to: dest)
             return true
@@ -304,6 +422,7 @@ final class FinderCutPaste: ObservableObject {
             && NSPasteboard.general.changeCount == markedChangeCount
         operationGeneration += 1
         moveInProgress = false
+        moveProgress = nil
         marked = []
         markedChangeCount = 0
         lastResult = nil

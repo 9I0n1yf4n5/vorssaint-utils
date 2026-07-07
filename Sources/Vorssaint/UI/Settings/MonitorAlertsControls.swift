@@ -2,10 +2,12 @@
 // Copyright (C) 2026 Vorssaint
 
 import SwiftUI
+import UserNotifications
 
 struct MonitorAlertsControls: View {
     @ObservedObject private var l10n = L10n.shared
     let compact: Bool
+    @State private var notificationsDenied = false
     @AppStorage(DefaultsKey.monitorAlertCPU) private var alertCPU = false
     @AppStorage(DefaultsKey.monitorAlertCPUTemperature) private var alertCPUTemperature = false
     @AppStorage(DefaultsKey.monitorAlertMemory) private var alertMemory = false
@@ -53,6 +55,7 @@ struct MonitorAlertsControls: View {
                         step: 5)
             }
             Picker(text.cooldown, selection: $alertCooldown) {
+                Text(text.cooldown2).tag(2)
                 Text(text.cooldown5).tag(5)
                 Text(text.cooldown15).tag(15)
                 Text(text.cooldown30).tag(30)
@@ -63,21 +66,49 @@ struct MonitorAlertsControls: View {
                 .font(compact ? .system(size: 9.5) : .caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            // Alerts silently cannot fire when macOS notifications are denied
+            // for the app; without this line that state is invisible (the
+            // user just never hears anything).
+            if notificationsDenied, anyAlertEnabled {
+                Text(text.notificationsDenied)
+                    .font(compact ? .system(size: 9.5) : .caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .toggleStyle(.checkbox)
         .controlSize(compact ? .small : .regular)
         .font(compact ? .system(size: 10.5) : .body)
-        .onAppear(perform: sanitizeAlertValues)
-        .onChange(of: alertCPU) { _, _ in MonitorAlertService.shared.syncWithPreferences() }
-        .onChange(of: alertCPUTemperature) { _, _ in MonitorAlertService.shared.syncWithPreferences() }
-        .onChange(of: alertMemory) { _, _ in MonitorAlertService.shared.syncWithPreferences() }
-        .onChange(of: alertDisk) { _, _ in MonitorAlertService.shared.syncWithPreferences() }
-        .onChange(of: alertBattery) { _, _ in MonitorAlertService.shared.syncWithPreferences() }
+        .onAppear {
+            sanitizeAlertValues()
+            refreshNotificationStatus()
+        }
+        .onChange(of: alertCPU) { _, _ in MonitorAlertService.shared.syncWithPreferences(); refreshNotificationStatus() }
+        .onChange(of: alertCPUTemperature) { _, _ in MonitorAlertService.shared.syncWithPreferences(); refreshNotificationStatus() }
+        .onChange(of: alertMemory) { _, _ in MonitorAlertService.shared.syncWithPreferences(); refreshNotificationStatus() }
+        .onChange(of: alertDisk) { _, _ in MonitorAlertService.shared.syncWithPreferences(); refreshNotificationStatus() }
+        .onChange(of: alertBattery) { _, _ in MonitorAlertService.shared.syncWithPreferences(); refreshNotificationStatus() }
         .onChange(of: alertCPUThreshold) { _, _ in sanitizeAlertValues() }
         .onChange(of: alertCPUTemperatureThreshold) { _, _ in sanitizeAlertValues() }
         .onChange(of: alertDiskFreePercent) { _, _ in sanitizeAlertValues() }
         .onChange(of: alertBatteryPercent) { _, _ in sanitizeAlertValues() }
         .onChange(of: alertCooldown) { _, _ in sanitizeAlertValues() }
+    }
+
+    private var anyAlertEnabled: Bool {
+        alertCPU || alertCPUTemperature || alertMemory || alertDisk || alertBattery
+    }
+
+    /// Checked slightly delayed so a just-fired authorization prompt has a
+    /// chance to be answered before the warning appears.
+    private func refreshNotificationStatus() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                DispatchQueue.main.async {
+                    notificationsDenied = settings.authorizationStatus == .denied
+                }
+            }
+        }
     }
 
     private func sanitizeAlertValues() {

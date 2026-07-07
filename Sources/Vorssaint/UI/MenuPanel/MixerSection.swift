@@ -22,6 +22,7 @@ struct MixerSection: View {
     @State private var soundOutputSwitcherUIDs: [String] = []
     @State private var normalSliderTint = Color(nsColor: .controlAccentColor)
     @State private var accentRevision = 0
+    @State private var lastResolvedAccent: NSColor?
     var collapsible = true
 
     var body: some View {
@@ -332,7 +333,19 @@ struct MixerSection: View {
         }
     }
 
+    /// Appearance KVO and the system-colors notification can fire in bursts
+    /// without the accent actually changing, and every revision bump re-renders
+    /// (and, before macOS 26, recreates) every slider row — so compare the
+    /// accent resolved against the current appearance and only then re-tint.
+    /// When the accent cannot be resolved this fails open (always re-tints),
+    /// never closed: eating a real accent change would leave stale sliders.
     private func refreshSliderTint() {
+        var resolved: NSColor?
+        NSApplication.shared.effectiveAppearance.performAsCurrentDrawingAppearance {
+            resolved = NSColor.controlAccentColor.usingColorSpace(.sRGB)
+        }
+        if let resolved, let last = lastResolvedAccent, resolved == last { return }
+        lastResolvedAccent = resolved
         normalSliderTint = Color(nsColor: .controlAccentColor)
         accentRevision += 1
     }
@@ -375,84 +388,105 @@ private struct MixerRow: View {
     private var isBoosting: Bool { (app.volume * 100).rounded() > 100 }
     private var isAtUnity: Bool { (app.volume * 100).rounded() == 100 }
 
+    /// SoundSource-sized icon spanning the row's two lines (issue #166); the
+    /// bitmap must be requested at this size or the upscale looks blurry.
+    private static let iconPointSize: CGFloat = 32
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 8) {
-                ZStack(alignment: .bottomTrailing) {
-                    Image(nsImage: ResponsibleProcess.icon(for: app.ownerPid))
-                        .resizable()
-                        .frame(width: 18, height: 18)
-                    if app.isPlaying {
-                        Circle()
-                            .fill(PanelMetricColor.green(for: colorScheme))
-                            .frame(width: 6, height: 6)
-                            .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1))
+        HStack(alignment: .center, spacing: 10) {
+            ZStack(alignment: .bottomTrailing) {
+                Image(nsImage: ResponsibleProcess.icon(for: app.ownerPid,
+                                                       pointSize: Self.iconPointSize))
+                    .resizable()
+                    .frame(width: Self.iconPointSize, height: Self.iconPointSize)
+                if app.isPlaying {
+                    Circle()
+                        .fill(PanelMetricColor.green(for: colorScheme))
+                        .frame(width: 8, height: 8)
+                        .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1.2))
+                        .offset(x: -1, y: -1)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Text(app.name)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    Spacer(minLength: 4)
+
+                    if !app.isBypassed {
+                        outputPicker
                     }
                 }
 
-                Text(app.name)
-                    .font(.system(size: 11.5, weight: .medium))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                if app.isBypassed {
+                    // Zoom and pro audio apps are listed but never tapped
+                    // (issue #177): the row explains itself instead of the
+                    // app silently missing from the mixer.
+                    Text(l10n.s.mixerBypassedCaption)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    HStack(spacing: 8) {
+                        MixerVolumeSlider(value: volumeBinding,
+                                          normalTint: normalTint,
+                                          boostTint: boostColor,
+                                          isBoosting: isBoosting,
+                                          accentRevision: accentRevision,
+                                          accessibilityLabel: app.name)
 
-                Spacer(minLength: 4)
+                        HStack(spacing: 2) {
+                            if isBoosting {
+                                Image(systemName: "bolt.fill")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(boostColor)
+                            }
+                            Text("\(Int((app.volume * 100).rounded()))%")
+                                .font(.system(size: 10.5, weight: .medium))
+                                .monospacedDigit()
+                                .foregroundStyle(isBoosting ? boostColor : Color.secondary)
+                        }
+                        .frame(width: 42, alignment: .trailing)
 
-                outputPicker
-            }
+                        Button {
+                            mixer.setVolume(1, for: app)
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 9.5, weight: .semibold))
+                                .foregroundStyle(isBoosting ? boostColor : Color.secondary)
+                                .frame(width: 14)
+                        }
+                        .buttonStyle(.plain)
+                        .help(l10n.s.mixerResetTooltip)
+                        .opacity(isAtUnity ? 0 : 1)
+                        .disabled(isAtUnity)
 
-            HStack(spacing: 8) {
-                MixerVolumeSlider(value: volumeBinding,
-                                  normalTint: normalTint,
-                                  boostTint: boostColor,
-                                  isBoosting: isBoosting,
-                                  accentRevision: accentRevision,
-                                  accessibilityLabel: app.name)
-
-                HStack(spacing: 2) {
-                    if isBoosting {
-                        Image(systemName: "bolt.fill")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(boostColor)
+                        Button {
+                            mixer.toggleMute(app)
+                        } label: {
+                            Image(systemName: app.volume <= 0.001 ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(app.volume <= 0.001
+                                                 ? PanelMetricColor.red(for: colorScheme)
+                                                 : Color.secondary)
+                                .frame(width: 16)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    Text("\(Int((app.volume * 100).rounded()))%")
-                        .font(.system(size: 10.5, weight: .medium))
-                        .monospacedDigit()
-                        .foregroundStyle(isBoosting ? boostColor : Color.secondary)
-                }
-                .frame(width: 42, alignment: .trailing)
 
-                Button {
-                    mixer.setVolume(1, for: app)
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 9.5, weight: .semibold))
-                        .foregroundStyle(isBoosting ? boostColor : Color.secondary)
-                        .frame(width: 14)
+                    if app.outputDeviceUnavailable {
+                        Label(l10n.s.mixerOutputFallback, systemImage: "speaker.badge.exclamationmark")
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                .buttonStyle(.plain)
-                .help(l10n.s.mixerResetTooltip)
-                .opacity(isAtUnity ? 0 : 1)
-                .disabled(isAtUnity)
-
-                Button {
-                    mixer.toggleMute(app)
-                } label: {
-                    Image(systemName: app.volume <= 0.001 ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(app.volume <= 0.001
-                                         ? PanelMetricColor.red(for: colorScheme)
-                                         : Color.secondary)
-                        .frame(width: 16)
-                }
-                .buttonStyle(.plain)
-            }
-
-            if app.outputDeviceUnavailable {
-                Label(l10n.s.mixerOutputFallback, systemImage: "speaker.badge.exclamationmark")
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.vertical, 2)

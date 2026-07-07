@@ -117,15 +117,59 @@ final class ClipboardHistoryService: ObservableObject {
             return true
         }
 
-        // Batches combine as text; images and files only travel one at a time.
-        let texts = list.filter { $0.kind == .text }.map(\.text)
-        if texts.isEmpty, let first = list.first {
+        // Batches: an all-files selection pastes as the files themselves; a
+        // selection with images pastes as rich text with the images embedded;
+        // anything else combines as text (files contribute paths).
+        switch ClipboardHistoryBatch.pasteMode(for: list) {
+        case let .files(paths):
+            let urls = paths.map { URL(fileURLWithPath: $0) }
+                .filter { FileManager.default.fileExists(atPath: $0.path) }
+            guard !urls.isEmpty else { return false }
+            pasteboard.clearContents()
+            pasteboard.writeObjects(urls as [NSURL])
+        case let .text(combined):
+            pasteboard.clearContents()
+            pasteboard.setString(combined, forType: .string)
+        case let .rich(parts):
+            guard let rich = Self.richBatchAttributedString(parts) else { return false }
+            pasteboard.clearContents()
+            pasteboard.writeObjects([rich])
+            let plain = ClipboardHistoryBatch.richPlainText(parts)
+            if !plain.isEmpty {
+                pasteboard.setString(plain, forType: .string)
+            }
+        case nil:
+            guard let first = list.first else { return false }
             return writeToPasteboard([first])
         }
-        pasteboard.clearContents()
-        pasteboard.setString(ClipboardHistoryBatch.combinedText(texts), forType: .string)
         lastChangeCount = pasteboard.changeCount
         return true
+    }
+
+    /// Text and images interleaved in list order, as one attributed string:
+    /// rich targets (Notes, Mail, TextEdit) paste everything together. Image
+    /// attachments travel as PNG file wrappers, which RTFD serializes intact.
+    /// A selected image whose stored payload is gone aborts the whole write
+    /// (returns nil), keeping the same invariant as the single-entry path:
+    /// stale content never silently vanishes from a paste after the user's
+    /// clipboard was already overwritten.
+    private static func richBatchAttributedString(_ parts: [ClipboardHistoryBatch.RichPart])
+        -> NSAttributedString? {
+        let result = NSMutableAttributedString()
+        for part in parts {
+            switch part {
+            case let .text(text):
+                result.append(NSAttributedString(string: text + "\n"))
+            case let .image(name):
+                guard let data = ClipboardImageStore.imageData(named: name) else { return nil }
+                let wrapper = FileWrapper(regularFileWithContents: data)
+                wrapper.preferredFilename = name
+                let attachment = NSTextAttachment(fileWrapper: wrapper)
+                result.append(NSAttributedString(attachment: attachment))
+                result.append(NSAttributedString(string: "\n"))
+            }
+        }
+        return result.length > 0 ? result : nil
     }
 
     private func touch(_ entryIDs: [UUID]) {
@@ -217,8 +261,6 @@ final class ClipboardHistoryService: ObservableObject {
     }
 
     func toggleQuickBatchSelection(_ entry: ClipboardHistoryEntry) {
-        // Batches combine as text; images and files stay single-copy items.
-        guard entry.kind == .text else { return }
         if let index = filteredQuickEntries.firstIndex(where: { $0.id == entry.id }) {
             quickSelectionIndex = index
         }
@@ -229,6 +271,27 @@ final class ClipboardHistoryService: ObservableObject {
             selected.insert(entry.id)
         }
         quickBatchEntryIDs = selected
+    }
+
+    /// Finder-style shift-click: selects everything between the last row the
+    /// user touched and the clicked one.
+    func extendQuickBatchSelection(to entry: ClipboardHistoryEntry) {
+        let matches = filteredQuickEntries
+        guard let target = matches.firstIndex(where: { $0.id == entry.id }) else { return }
+        let anchor = clampedQuickSelectionIndex(for: matches.count)
+        let ids = ClipboardHistoryBatch.rangeSelectionIDs(allIDs: matches.map(\.id),
+                                                          anchor: anchor,
+                                                          target: target)
+        quickBatchEntryIDs = quickBatchEntryIDs.union(ids)
+        quickSelectionIndex = target
+        quickSelectionIsVisible = true
+    }
+
+    /// Selects every visible result, so "search, select all, copy" works.
+    func selectAllQuickEntries() {
+        let visible = filteredQuickEntries.map(\.id)
+        guard !visible.isEmpty else { return }
+        quickBatchEntryIDs = quickBatchEntryIDs.union(visible)
     }
 
     func toggleSelectedQuickEntryBatchSelection() {
@@ -710,7 +773,10 @@ final class ClipboardHistoryService: ObservableObject {
         panel.titlebarAppearsTransparent = true
         panel.titleVisibility = .hidden
         panel.isReleasedWhenClosed = false
-        panel.isMovableByWindowBackground = true
+        // Movable-by-background turns ⌘-click into a window-background grab
+        // before any row sees it, which silently broke modifier clicks on
+        // rows. The title bar strip still drags the window.
+        panel.isMovableByWindowBackground = false
         panel.hidesOnDeactivate = false
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
@@ -740,7 +806,13 @@ final class ClipboardHistoryService: ObservableObject {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak panel] event in
             guard let self, let panel, event.window === panel else { return event }
             if event.keyCode == UInt16(kVK_Escape) {
-                self.hideHistoryWindow()
+                // Esc backs out one layer at a time: first the selection,
+                // then the window.
+                if self.quickBatchCount > 0 {
+                    self.clearQuickBatchSelection()
+                } else {
+                    self.hideHistoryWindow()
+                }
                 return nil
             }
             if event.keyCode == UInt16(kVK_Return) || event.keyCode == UInt16(kVK_ANSI_KeypadEnter) {
@@ -760,6 +832,23 @@ final class ClipboardHistoryService: ObservableObject {
                 return event
             }
             let modifiers = event.modifierFlags.intersection([.command, .option, .shift, .control])
+            // Matched by typed character, not physical key code, so AZERTY,
+            // Dvorak and friends keep their real ⌘C/⌘A (and nothing else is
+            // mistaken for them). The list only claims them over the search
+            // field per the support predicates.
+            let key = event.charactersIgnoringModifiers?.lowercased()
+            if modifiers == [.command], key == "c",
+               ClipboardHistoryBatch.listOwnsCopyShortcut(batchCount: self.quickBatchCount) {
+                self.copySelectedQuickEntryOnly()
+                return nil
+            }
+            if modifiers == [.command], key == "a",
+               ClipboardHistoryBatch.listOwnsSelectAllShortcut(
+                   batchCount: self.quickBatchCount,
+                   queryIsEmpty: self.quickQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                self.selectAllQuickEntries()
+                return nil
+            }
             if modifiers == [.option], event.keyCode == UInt16(kVK_ANSI_P) {
                 self.togglePinSelectedQuickEntry()
                 return nil
@@ -889,7 +978,15 @@ final class ClipboardHistoryService: ObservableObject {
 /// (UserDefaults would balloon with base64), named by UUID and swept against
 /// the live entry list after every save.
 enum ClipboardImageStore {
-    private static let thumbnails = NSCache<NSString, NSImage>()
+    /// Explicit limits: NSCache only sheds under system memory pressure, so
+    /// without them a history full of screenshots quietly holds every decoded
+    /// thumbnail at once.
+    private static let thumbnails: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 120
+        cache.totalCostLimit = 48 * 1024 * 1024
+        return cache
+    }()
 
     static var directory: URL? {
         guard let base = FileManager.default.urls(for: .applicationSupportDirectory,
@@ -935,7 +1032,8 @@ enum ClipboardImageStore {
               let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options)
         else { return nil }
         let image = NSImage(cgImage: cgImage, size: .zero)
-        thumbnails.setObject(image, forKey: name as NSString)
+        thumbnails.setObject(image, forKey: name as NSString,
+                             cost: cgImage.bytesPerRow * cgImage.height)
         return image
     }
 

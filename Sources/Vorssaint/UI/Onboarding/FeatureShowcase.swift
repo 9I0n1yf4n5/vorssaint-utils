@@ -108,90 +108,6 @@ struct HowToRow: Identifiable {
 
 // MARK: - Feature steps
 
-struct CutPasteShowcaseStep: View {
-    @ObservedObject private var l10n = L10n.shared
-    @ObservedObject private var permissions = Permissions.shared
-    @AppStorage(DefaultsKey.finderCutPasteEnabled) private var enabled = false
-
-    var body: some View {
-        ShowcaseScaffold(
-            title: l10n.s.cutPasteName,
-            benefit: l10n.s.cutPasteEnableCaption,
-            enableLabel: l10n.s.cutPasteEnable,
-            enabled: $enabled,
-            howTo: [HowToRow(keys: ["⌘", "X"], text: l10n.s.cutPasteStep1),
-                    HowToRow(keys: ["⌘", "V"], text: l10n.s.cutPasteStep2)],
-            onToggle: { FinderCutPaste.shared.syncWithPreferences() },
-            hero: { CutPasteHero() },
-            footer: {
-                if enabled, !permissions.accessibility { PermissionRow(kind: .accessibility) }
-            }
-        )
-    }
-}
-
-struct AutoQuitShowcaseStep: View {
-    @ObservedObject private var l10n = L10n.shared
-    @ObservedObject private var permissions = Permissions.shared
-    @AppStorage(DefaultsKey.autoQuitEnabled) private var enabled = false
-
-    var body: some View {
-        ShowcaseScaffold(
-            title: l10n.s.autoQuitName,
-            benefit: l10n.s.autoQuitEnableCaption,
-            enableLabel: l10n.s.autoQuitEnable,
-            enabled: $enabled,
-            howTo: [HowToRow(keys: nil, text: l10n.s.autoQuitStep1),
-                    HowToRow(keys: nil, text: l10n.s.autoQuitStep2)],
-            onToggle: { AutoQuitService.shared.syncWithPreferences() },
-            hero: { AutoQuitHero() },
-            footer: {
-                if enabled, !permissions.accessibility { PermissionRow(kind: .accessibility) }
-            }
-        )
-    }
-}
-
-struct UninstallerShowcaseStep: View {
-    @ObservedObject private var l10n = L10n.shared
-
-    var body: some View {
-        ShowcaseScaffold(
-            title: l10n.s.uninstallerName,
-            benefit: l10n.s.uninstallerEnableCaption,
-            howTo: [HowToRow(keys: nil, text: l10n.s.uninstallerStep1),
-                    HowToRow(keys: nil, text: l10n.s.uninstallerStep2),
-                    HowToRow(keys: nil, text: l10n.s.uninstallerStep3)],
-            hero: { UninstallerHero() },
-            footer: { EmptyView() }
-        )
-    }
-}
-
-struct ShelfShowcaseStep: View {
-    @ObservedObject private var l10n = L10n.shared
-    @AppStorage(DefaultsKey.shelfEnabled) private var enabled = false
-
-    var body: some View {
-        ShowcaseScaffold(
-            title: l10n.s.shelfName,
-            benefit: l10n.s.shelfEnableCaption,
-            enableLabel: l10n.s.shelfEnable,
-            enabled: $enabled,
-            howTo: [HowToRow(keys: GlobalShortcut.shelfDefault.keyCaps, text: l10n.s.shelfStep1),
-                    HowToRow(keys: nil, text: l10n.s.shelfStep2),
-                    HowToRow(keys: nil, text: l10n.s.shelfStep3)],
-            onToggle: { ShelfService.shared.syncWithPreferences() },
-            hero: { ShelfHero() },
-            footer: {
-                Label(l10n.s.shelfNoPermission, systemImage: "checkmark.shield")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        )
-    }
-}
-
 // MARK: - Hero illustrations
 
 private struct HeroKey: View {
@@ -214,90 +130,42 @@ private struct HeroKeys: View {
     }
 }
 
-private struct CutPasteHero: View {
-    var body: some View {
-        HStack(spacing: 16) {
-            VStack(spacing: 9) {
-                Image(systemName: "doc.fill")
-                    .font(.system(size: 42))
-                    .overlay(alignment: .topTrailing) {
-                        Image(systemName: "scissors")
-                            .font(.system(size: 14, weight: .bold))
-                            .padding(3)
-                            .background(Circle().fill(Color.orange))
-                            .offset(x: 8, y: -6)
-                    }
-                HeroKeys(keys: ["⌘", "X"])
-            }
-            Image(systemName: "arrow.right").font(.system(size: 18, weight: .semibold)).opacity(0.7)
-            VStack(spacing: 9) {
-                Image(systemName: "folder.fill").font(.system(size: 42))
-                HeroKeys(keys: ["⌘", "V"])
-            }
-        }
-        .foregroundStyle(.white)
-    }
-}
-
-private struct AutoQuitHero: View {
-    var body: some View {
-        HStack(spacing: 16) {
-            WindowGlyph()
-            Image(systemName: "arrow.right").font(.system(size: 18, weight: .semibold)).opacity(0.7)
-            Image(systemName: "checkmark.seal.fill").font(.system(size: 40))
-        }
-        .foregroundStyle(.white)
-    }
-}
-
 /// A small window with its three title-bar buttons, the close one highlighted.
 /// Drawn by hand so the buttons stay aligned in the title bar at any scale. A
 /// red circle overlaid on the `macwindow` symbol used to land off in the corner.
-private struct WindowGlyph: View {
+struct QuickPanelShowcaseStep: View {
+    @ObservedObject private var l10n = L10n.shared
+
     var body: some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .strokeBorder(.white, lineWidth: 3.5)
-            .frame(width: 52, height: 40)
-            .overlay(alignment: .topLeading) {
-                HStack(spacing: 4) {
-                    Circle().fill(.red).frame(width: 6, height: 6)
-                    Circle().fill(.white.opacity(0.55)).frame(width: 6, height: 6)
-                    Circle().fill(.white.opacity(0.55)).frame(width: 6, height: 6)
+        ShowcaseScaffold(
+            title: l10n.s.launcherName,
+            benefit: l10n.s.launcherCaption,
+            howTo: [HowToRow(keys: GlobalShortcut.quickLauncherDefault.keyCaps, text: l10n.s.launcherOpenNow),
+                    HowToRow(keys: nil, text: l10n.s.launcherKeysHint),
+                    HowToRow(keys: nil, text: l10n.s.launcherEditHint)],
+            hero: { QuickPanelHero() },
+            footer: {
+                Button {
+                    QuickLauncherService.shared.show()
+                } label: {
+                    Label(l10n.s.launcherOpenNow, systemImage: "square.grid.2x2")
                 }
-                .padding(.leading, 8)
-                .padding(.top, 7)
+                .controlSize(.small)
             }
+        )
     }
 }
 
-private struct UninstallerHero: View {
-    var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(.white.opacity(0.16))
-                    .frame(width: 56, height: 56)
-                Image(systemName: "app.fill").font(.system(size: 30))
-            }
-            VStack(spacing: 5) {
-                Image(systemName: "doc.fill").font(.system(size: 12)).opacity(0.8)
-                Image(systemName: "arrow.right").font(.system(size: 18, weight: .semibold)).opacity(0.7)
-            }
-            Image(systemName: "trash.fill").font(.system(size: 40))
-        }
-        .foregroundStyle(.white)
-    }
-}
-
-private struct ShelfHero: View {
+private struct QuickPanelHero: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack(spacing: 8) {
-                chip("doc.fill")
-                chip("photo.fill")
-                chip("link")
+                chip("bolt.fill")
+                chip("mic.slash.fill")
+                chip("eyedropper")
+                chip("doc.on.clipboard")
             }
-            Image(systemName: "tray.full.fill").font(.system(size: 40))
+            HeroKeys(keys: GlobalShortcut.quickLauncherDefault.keyCaps)
         }
         .foregroundStyle(.white)
     }

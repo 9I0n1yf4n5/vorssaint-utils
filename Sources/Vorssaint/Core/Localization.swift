@@ -192,6 +192,7 @@ struct Strings {
     let adminPromptClamshellOn: String
     let adminPromptClamshellOff: String
     let adminPromptRecover: String
+    let adminPromptUpdate: String
     let adminPromptSudoersInstall: String
     let adminPromptSudoersRemove: String
 
@@ -258,6 +259,11 @@ struct Strings {
     let middleClickEnable: String
     let middleClickEnableCaption: String
     let middleClickDragConflict: String
+    let middleClickTapPicker: String
+    let middleClickTapOff: String
+    let middleClickTapThreeFingers: String
+    let middleClickTapFourFingers: String
+    let middleClickTapCaption: String
     let quickToolsTab: String
     let quickToolShortcutToggle: String
     let ocrName: String
@@ -267,18 +273,22 @@ struct Strings {
     let colorPickerName: String
     let colorPickerCaption: String
     let colorPickerFormatLabel: String
+    let colorPickerBareHexToggle: String
     let colorPickerPickNow: String
     let micMuteName: String
     let micUnmuteName: String
     let micMuteCaption: String
     let micMutedHUD: String
     let micUnmutedHUD: String
+    let micMuteMenuBarToggle: String
+    let micMuteMenuBarCaption: String
     let pastePlainName: String
     let pastePlainCaption: String
     let launcherName: String
     let launcherCaption: String
     let launcherOpenNow: String
     let launcherEditHint: String
+    let launcherEmptyState: String
     let launcherAddSection: String
     let launcherKeysHint: String
 
@@ -301,6 +311,8 @@ struct Strings {
     let dockPreviewEnableCaption: String
     let dockClickMinimize: String
     let dockClickMinimizeCaption: String
+    let dockClickCycleWindows: String
+    let dockClickCycleWindowsCaption: String
     let dockPreviewActiveNow: String
     let dockPreviewMagnificationBlocked: String
     let dockPreviewDockUnavailable: String
@@ -338,6 +350,8 @@ struct Strings {
     let cutMovedSingular: String
     let cutMovedPluralFormat: String      // + count
     let cutSomeFailed: String
+    let cutMovingTitle: String
+    let cutMovingCountFormat: String      // + position, total
 
     // MARK: Feature — quit on last window close
     let autoQuitName: String
@@ -507,6 +521,7 @@ struct Strings {
     let mediaStartVideo: String
     let mediaStartGIF: String
     let mediaStartImage: String
+    let mediaStartConvertPDF: String
     let mediaStartText: String
     let mediaCancel: String
     let mediaStartTime: String
@@ -537,6 +552,7 @@ struct Strings {
     let mediaEmptyText: String
     let mediaResultSavedFormat: String
     let mediaResultSizeFormat: String
+    let mediaResultGrewCaption: String
     let mediaErrorNoFile: String
     let mediaErrorNoVideo: String
     let mediaErrorSameOutput: String
@@ -577,6 +593,7 @@ struct Strings {
     let mixerOutputCurrent: String
     let mixerOutputUnavailable: String
     let mixerOutputFallback: String
+    let mixerBypassedCaption: String
     let mixerOutputTooltip: String
     let mixerSystemOutputTitle: String
     let mixerSystemOutputNoDevices: String
@@ -610,6 +627,9 @@ struct Strings {
     let updateFailedPrefix: String
     let updateLastChecked: String
     let updateNotifyTitle: String
+    let updateInstallFailedBody: String
+    let updateNeedsApplicationsTitle: String
+    let updateNeedsApplicationsBody: String
     let menuCheckUpdates: String
 
     // MARK: Permissions (shared by Settings & onboarding)
@@ -763,6 +783,11 @@ struct Strings {
     let monitorMenuBarPresetLabel: String
     let menuBarPresetReadable: String
     let menuBarPresetDense: String
+    let menuBarSpacingLabel: String
+    let menuBarSpacingStandard: String
+    let menuBarSpacingCompact: String
+    let menuBarHideIconToggle: String
+    let menuBarHideIconCaption: String
     let monitorLabelStyleLabel: String
     let menuBarLabelStyleCompact: String
     let menuBarLabelStyleClassic: String
@@ -838,6 +863,9 @@ struct Strings {
 
     // MARK: Support / donate
     let tabSupport: String
+    let shortcutsPageCaption: String
+    let shortcutsPageTitle: String
+    let settingsSearchPlaceholder: String
     let donateHeading: String
     let donateMessage: String
     let donateButton: String
@@ -856,10 +884,15 @@ struct Strings {
     let updateShowcaseRestart: String
     let showMenuBarIcon: String
     let showMenuBarIconCaption: String
+    let menuBarIconStillHiddenTitle: String
+    let menuBarIconStillHiddenBody: String
+    let menuBarIconManagerHintFormat: String  // + manager name (twice)
 
     // MARK: Configurable shortcuts
     let shortcutRecording: String
     let shortcutReset: String
+    let shortcutNone: String
+    let shortcutClear: String
     let shortcutInvalid: String
     let shortcutConflictFormat: String
     let shortcutUnavailable: String
@@ -952,6 +985,7 @@ extension Strings {
         adminPromptClamshellOn: "O Vorssaint precisa da sua senha para manter o Mac ativo com a tampa fechada.",
         adminPromptClamshellOff: "O Vorssaint precisa da sua senha para reativar a suspensão normal do Mac.",
         adminPromptRecover: "O Vorssaint foi encerrado com a suspensão do Mac desativada. Digite a senha para restaurar a suspensão normal.",
+        adminPromptUpdate: "O Vorssaint precisa da sua senha para instalar a atualização.",
         adminPromptSudoersInstall: "O Vorssaint vai criar uma regra restrita (somente pmset disablesleep) para alternar a tampa fechada sem pedir senha. Esta é a única vez que a senha será necessária.",
         adminPromptSudoersRemove: "O Vorssaint vai remover a regra de tampa fechada sem senha.",
 
@@ -1012,6 +1046,11 @@ extension Strings {
         middleClickEnable: "Clique com três dedos vira botão do meio",
         middleClickEnableCaption: "Pressionar o trackpad com três dedos funciona como o clique da rodinha do mouse: abre links em nova aba, fecha abas e tudo mais que o botão do meio faz.",
         middleClickDragConflict: "O arrastar com três dedos do macOS está ativado e usa esse mesmo gesto. Desative-o nos Ajustes do Sistema em Acessibilidade, Controle do Cursor, Opções do Trackpad, e o clique do meio vai funcionar.",
+        middleClickTapPicker: "Toque leve também clica",
+        middleClickTapOff: "Desligado",
+        middleClickTapThreeFingers: "3 dedos",
+        middleClickTapFourFingers: "4 dedos",
+        middleClickTapCaption: "Um toque leve com esse número de dedos, sem pressionar, também dispara o clique do meio. Deslizar nunca conta. Se o toque de três dedos do macOS estiver atribuído à Busca, desative-o para os dois não abrirem juntos.",
         quickToolsTab: "Ferramentas rápidas",
         quickToolShortcutToggle: "Atalho global",
         ocrName: "Copiar texto da tela",
@@ -1021,18 +1060,22 @@ extension Strings {
         colorPickerName: "Conta-gotas de cor",
         colorPickerCaption: "Capture a cor de qualquer pixel da tela e copie no formato que preferir.",
         colorPickerFormatLabel: "Formato copiado",
+        colorPickerBareHexToggle: "Copiar sem o prefixo #",
         colorPickerPickNow: "Capturar cor",
         micMuteName: "Silenciar microfone",
         micUnmuteName: "Reativar microfone",
         micMuteCaption: "Corta o microfone do Mac com um clique ou atalho, valendo para qualquer app.",
         micMutedHUD: "Microfone silenciado",
         micUnmutedHUD: "Microfone reativado",
+        micMuteMenuBarToggle: "Mostrar na barra de menus enquanto silenciado",
+        micMuteMenuBarCaption: "Um microfone cortado em vermelho aparece ao lado do ícone do app na barra de menus.",
         pastePlainName: "Colar como texto puro",
         pastePlainCaption: "Cola o que foi copiado sem cores, fontes ou formatação. O conteúdo original continua no clipboard.",
         launcherName: "Painel rápido",
         launcherCaption: "Um painel flutuante com suas ferramentas favoritas, aberto por atalho de qualquer lugar.",
         launcherOpenNow: "Abrir painel rápido",
         launcherEditHint: "Use o botão de ajustes para escolher, ocultar e arrastar as ferramentas.",
+        launcherEmptyState: "Todas as ferramentas estão ocultas. Use o botão de ajustes para trazê-las de volta.",
         launcherAddSection: "Adicionar de volta",
         launcherKeysHint: "Setas navegam, Enter abre, 1 a 9 abrem direto",
 
@@ -1054,6 +1097,8 @@ extension Strings {
         dockPreviewEnableCaption: "Passe o mouse em um app aberto no Dock para ver e espiar suas janelas.",
         dockClickMinimize: "Clicar no Dock minimiza",
         dockClickMinimizeCaption: "As janelas do app ativo são minimizadas ao clicar no ícone dele no Dock. Clique de novo para trazê-las de volta.",
+        dockClickCycleWindows: "Clicar no Dock alterna janelas",
+        dockClickCycleWindowsCaption: "Clique no ícone do Dock do app ativo para alternar entre suas janelas, como ⌘`.",
         dockPreviewActiveNow: "Ativo no Dock",
         dockPreviewMagnificationBlocked: "Desative a ampliação do Dock para usar.",
         dockPreviewDockUnavailable: "Não foi possível ler os itens do Dock.",
@@ -1090,6 +1135,8 @@ extension Strings {
         cutMovedSingular: "1 item movido",
         cutMovedPluralFormat: "%d itens movidos",
         cutSomeFailed: "Alguns itens não puderam ser movidos",
+        cutMovingTitle: "Movendo…",
+        cutMovingCountFormat: "%d de %d",
 
         autoQuitName: "Encerrar ao fechar",
         autoQuitEnable: "Encerrar o app ao fechar a última janela",
@@ -1254,6 +1301,7 @@ extension Strings {
         mediaStartVideo: "Comprimir vídeo",
         mediaStartGIF: "Criar GIF",
         mediaStartImage: "Comprimir imagem",
+        mediaStartConvertPDF: "Converter em PDF",
         mediaStartText: "Extrair texto",
         mediaCancel: "Cancelar",
         mediaStartTime: "Início",
@@ -1284,6 +1332,7 @@ extension Strings {
         mediaEmptyText: "Nenhum texto encontrado.",
         mediaResultSavedFormat: "Salvo como %@",
         mediaResultSizeFormat: "%@ para %@",
+        mediaResultGrewCaption: "O arquivo convertido ficou maior que o original.",
         mediaErrorNoFile: "Escolha um arquivo primeiro.",
         mediaErrorNoVideo: "Este arquivo não tem trilha de vídeo.",
         mediaErrorSameOutput: "Escolha um destino diferente do arquivo original.",
@@ -1321,6 +1370,7 @@ extension Strings {
         mixerOutputCurrent: "atual",
         mixerOutputUnavailable: "Saída indisponível",
         mixerOutputFallback: "Usando o padrão até esse dispositivo voltar.",
+        mixerBypassedCaption: "Este app controla o próprio áudio.",
         mixerOutputTooltip: "Escolher saída",
         mixerSystemOutputTitle: "Saída",
         mixerSystemOutputNoDevices: "Nenhuma saída encontrada",
@@ -1353,6 +1403,9 @@ extension Strings {
         updateFailedPrefix: "Não foi possível verificar:",
         updateLastChecked: "Última verificação:",
         updateNotifyTitle: "Atualização do Vorssaint",
+        updateInstallFailedBody: "A atualização foi baixada, mas não pôde ser aplicada. Baixe a versão mais recente na página de releases do GitHub e arraste o app por cima do atual.",
+        updateNeedsApplicationsTitle: "Mova o Vorssaint para Aplicativos",
+        updateNeedsApplicationsBody: "O app está rodando de um lugar que não dá para atualizar, como a imagem de disco ou uma área temporária do sistema. Arraste o Vorssaint para a pasta Aplicativos, abra de lá e tente de novo.",
         menuCheckUpdates: "Procurar atualizações…",
 
         permissionRequired: "Permissão necessária",
@@ -1498,6 +1551,11 @@ extension Strings {
         monitorMenuBarPresetLabel: "Estilo",
         menuBarPresetReadable: "Legível",
         menuBarPresetDense: "Denso",
+        menuBarSpacingLabel: "Espaçamento na barra",
+        menuBarSpacingStandard: "Padrão",
+        menuBarSpacingCompact: "Compacto",
+        menuBarHideIconToggle: "Ocultar o ícone do app enquanto houver métricas",
+        menuBarHideIconCaption: "O ícone volta sozinho quando as métricas saem da barra e quando há algo a avisar (atualização pronta ou microfone silenciado).",
         monitorLabelStyleLabel: "Rótulos",
         menuBarLabelStyleCompact: "Compactos",
         menuBarLabelStyleClassic: "Clássicos",
@@ -1569,6 +1627,9 @@ extension Strings {
         cleaningNeedsAxBody: "Para bloquear o teclado com segurança, o Vorssaint precisa da permissão de Acessibilidade. Conceda em Ajustes do Sistema e tente de novo.",
 
         tabSupport: "Apoiar",
+        shortcutsPageCaption: "Todos os atalhos globais ativos no app agora. Cada um é configurado na página do próprio recurso.",
+        shortcutsPageTitle: "Atalhos de teclado",
+        settingsSearchPlaceholder: "Buscar ajustes",
         donateHeading: "Apoie o Vorssaint",
         donateMessage: "Todos os meus projetos públicos são, e sempre serão, totalmente gratuitos: sem assinatura, sem anúncios. O apoio da comunidade é a única forma de manter tudo vivo. Se o Vorssaint te ajuda, um café faz diferença de verdade.",
         donateButton: "Buy me a coffee",
@@ -1587,8 +1648,13 @@ extension Strings {
         updateShowcaseRestart: "Voltar ao início",
         showMenuBarIcon: "Mostrar ícone na barra de menus",
         showMenuBarIconCaption: "Se o ícone do Vorssaint sumir (o macOS pode esconder ícones quando a barra de menus fica sem espaço, comum em Macs com notch), reabra o Vorssaint pela pasta Aplicativos ou pelo Spotlight: isso recria o ícone e, se ele ainda estiver escondido, abre esta janela. O botão acima faz o mesmo quando você já consegue chegar aqui. Manter menos ícones na barra, ou menos métricas no Vorssaint, reduz bastante a chance.",
+        menuBarIconStillHiddenTitle: "O ícone continua escondido",
+        menuBarIconStillHiddenBody: "O ícone foi recriado, mas o macOS não deu um lugar visível a ele. A barra de menus provavelmente está sem espaço: remova alguns ícones da barra (ou feche apps com menus longos) e tente de novo.",
+        menuBarIconManagerHintFormat: "O %@ está aberto e pode estar guardando o ícone na seção oculta dele. Procure o Vorssaint lá, ou configure o %@ para sempre mostrar o Vorssaint.",
         shortcutRecording: "Pressione o novo atalho",
         shortcutReset: "Redefinir",
+        shortcutNone: "Nenhum",
+        shortcutClear: "Remover atalho",
         shortcutInvalid: "Use pelo menos Control, Option ou Command junto com uma tecla.",
         shortcutConflictFormat: "Este atalho já está em uso por %@.",
         shortcutUnavailable: "O macOS recusou este atalho. Escolha outro.",
@@ -1682,6 +1748,7 @@ extension Strings {
         adminPromptClamshellOn: "Vorssaint needs your password to keep the Mac going with the lid closed.",
         adminPromptClamshellOff: "Vorssaint needs your password to restore the Mac's normal sleep.",
         adminPromptRecover: "Vorssaint quit while the Mac's sleep was disabled. Enter the password to restore normal sleep.",
+        adminPromptUpdate: "Vorssaint needs your password to install the update.",
         adminPromptSudoersInstall: "Vorssaint will create a restricted rule (pmset disablesleep only) to toggle closed-lid mode without asking for a password. This is the only time the password is needed.",
         adminPromptSudoersRemove: "Vorssaint will remove the password-free closed-lid rule.",
 
@@ -1742,6 +1809,11 @@ extension Strings {
         middleClickEnable: "Three-finger click acts as middle click",
         middleClickEnableCaption: "Pressing the trackpad with three fingers works like a mouse wheel click: open links in a new tab, close tabs and everything else the middle button does.",
         middleClickDragConflict: "macOS three-finger drag is turned on and uses this same gesture. Turn it off in System Settings under Accessibility, Pointer Control, Trackpad Options, and the middle click will work.",
+        middleClickTapPicker: "A light tap also clicks",
+        middleClickTapOff: "Off",
+        middleClickTapThreeFingers: "3 fingers",
+        middleClickTapFourFingers: "4 fingers",
+        middleClickTapCaption: "A light tap with that many fingers, without pressing, also fires the middle click. Sliding never counts. If the macOS three-finger tap is assigned to Look Up, turn it off so both do not fire together.",
         quickToolsTab: "Quick tools",
         quickToolShortcutToggle: "Global shortcut",
         ocrName: "Copy text from screen",
@@ -1751,18 +1823,22 @@ extension Strings {
         colorPickerName: "Color picker",
         colorPickerCaption: "Grab the color of any pixel on screen and copy it in your favorite format.",
         colorPickerFormatLabel: "Copied format",
+        colorPickerBareHexToggle: "Copy without the # prefix",
         colorPickerPickNow: "Pick color",
         micMuteName: "Mute microphone",
         micUnmuteName: "Unmute microphone",
         micMuteCaption: "Cuts the Mac's microphone with a click or shortcut, across every app.",
         micMutedHUD: "Microphone muted",
         micUnmutedHUD: "Microphone back on",
+        micMuteMenuBarToggle: "Show in the menu bar while muted",
+        micMuteMenuBarCaption: "A red crossed-out mic appears beside the app's icon in the menu bar.",
         pastePlainName: "Paste as plain text",
         pastePlainCaption: "Pastes what you copied without colors, fonts or formatting. The original stays on the clipboard.",
         launcherName: "Quick panel",
         launcherCaption: "A floating panel with your favorite tools, summoned by a shortcut from anywhere.",
         launcherOpenNow: "Open quick panel",
         launcherEditHint: "Use the tune button to choose, hide and drag the tools around.",
+        launcherEmptyState: "All tools are hidden. Use the tune button to add them back.",
         launcherAddSection: "Add back",
         launcherKeysHint: "Arrows navigate, Enter opens, 1 to 9 open directly",
 
@@ -1784,6 +1860,8 @@ extension Strings {
         dockPreviewEnableCaption: "Hover over an open app in the Dock to preview and peek at its windows.",
         dockClickMinimize: "Click the Dock icon to minimize",
         dockClickMinimizeCaption: "The active app's windows minimize when you click its Dock icon. Click again to bring them back.",
+        dockClickCycleWindows: "Click the Dock icon to cycle windows",
+        dockClickCycleWindowsCaption: "Click an active app's Dock icon to rotate through its windows, like ⌘`.",
         dockPreviewActiveNow: "Active in the Dock",
         dockPreviewMagnificationBlocked: "Turn off Dock magnification to use this.",
         dockPreviewDockUnavailable: "Could not read Dock items.",
@@ -1820,6 +1898,8 @@ extension Strings {
         cutMovedSingular: "1 item moved",
         cutMovedPluralFormat: "%d items moved",
         cutSomeFailed: "Some items couldn’t be moved",
+        cutMovingTitle: "Moving…",
+        cutMovingCountFormat: "%d of %d",
 
         autoQuitName: "Quit on close",
         autoQuitEnable: "Quit an app when its last window closes",
@@ -1984,6 +2064,7 @@ extension Strings {
         mediaStartVideo: "Compress video",
         mediaStartGIF: "Make GIF",
         mediaStartImage: "Compress image",
+        mediaStartConvertPDF: "Convert to PDF",
         mediaStartText: "Extract text",
         mediaCancel: "Cancel",
         mediaStartTime: "Start",
@@ -2014,6 +2095,7 @@ extension Strings {
         mediaEmptyText: "No text found.",
         mediaResultSavedFormat: "Saved as %@",
         mediaResultSizeFormat: "%@ to %@",
+        mediaResultGrewCaption: "The converted file came out larger than the original.",
         mediaErrorNoFile: "Choose a file first.",
         mediaErrorNoVideo: "This file has no video track.",
         mediaErrorSameOutput: "Choose a destination different from the original file.",
@@ -2051,6 +2133,7 @@ extension Strings {
         mixerOutputCurrent: "current",
         mixerOutputUnavailable: "Output unavailable",
         mixerOutputFallback: "Using default until this device returns.",
+        mixerBypassedCaption: "This app manages its own audio.",
         mixerOutputTooltip: "Choose output",
         mixerSystemOutputTitle: "Output",
         mixerSystemOutputNoDevices: "No outputs found",
@@ -2083,6 +2166,9 @@ extension Strings {
         updateFailedPrefix: "Couldn't check:",
         updateLastChecked: "Last checked:",
         updateNotifyTitle: "Vorssaint update",
+        updateInstallFailedBody: "The update was downloaded but could not be applied. Download the latest version from the GitHub releases page and drag the app over the current one.",
+        updateNeedsApplicationsTitle: "Move Vorssaint to Applications",
+        updateNeedsApplicationsBody: "The app is running from a place that cannot be updated, such as the disk image or a temporary system location. Drag Vorssaint to the Applications folder, open it from there and try again.",
         menuCheckUpdates: "Check for updates…",
 
         permissionRequired: "Permission required",
@@ -2228,6 +2314,11 @@ extension Strings {
         monitorMenuBarPresetLabel: "Style",
         menuBarPresetReadable: "Readable",
         menuBarPresetDense: "Dense",
+        menuBarSpacingLabel: "Menu bar spacing",
+        menuBarSpacingStandard: "Standard",
+        menuBarSpacingCompact: "Compact",
+        menuBarHideIconToggle: "Hide the app icon while metrics are shown",
+        menuBarHideIconCaption: "The icon returns by itself when metrics leave the bar and when there is something to signal (an update ready or the microphone muted).",
         monitorLabelStyleLabel: "Labels",
         menuBarLabelStyleCompact: "Compact",
         menuBarLabelStyleClassic: "Classic",
@@ -2299,6 +2390,9 @@ extension Strings {
         cleaningNeedsAxBody: "To lock the keyboard safely, Vorssaint needs Accessibility permission. Grant it in System Settings and try again.",
 
         tabSupport: "Support",
+        shortcutsPageCaption: "Every global shortcut active in the app right now. Each one is configured on its feature's own page.",
+        shortcutsPageTitle: "Keyboard shortcuts",
+        settingsSearchPlaceholder: "Search settings",
         donateHeading: "Support Vorssaint",
         donateMessage: "Every one of my public projects is, and always will be, completely free: no subscription, no ads. Community support is the only thing that keeps it alive. If Vorssaint helps you, a coffee genuinely makes a difference.",
         donateButton: "Buy me a coffee",
@@ -2317,8 +2411,13 @@ extension Strings {
         updateShowcaseRestart: "Restart",
         showMenuBarIcon: "Show menu bar icon",
         showMenuBarIconCaption: "If Vorssaint's icon disappears (macOS can hide menu bar icons when the bar runs out of room, common on Macs with a notch), reopen Vorssaint from Applications or Spotlight: that rebuilds the icon and, if it's still hidden, opens this window. The button above does the same when you can already get here. Keeping fewer menu bar icons, or fewer Vorssaint metrics, makes it far less likely.",
+        menuBarIconStillHiddenTitle: "The icon is still hidden",
+        menuBarIconStillHiddenBody: "The icon was rebuilt, but macOS did not give it a visible spot. The menu bar is probably out of room: remove some menu bar icons (or close apps with long menus) and try again.",
+        menuBarIconManagerHintFormat: "%@ is open and may be keeping the icon in its hidden section. Look for Vorssaint there, or set %@ to always show Vorssaint.",
         shortcutRecording: "Press the new shortcut",
         shortcutReset: "Reset",
+        shortcutNone: "None",
+        shortcutClear: "Remove shortcut",
         shortcutInvalid: "Use at least Control, Option or Command with a key.",
         shortcutConflictFormat: "This shortcut is already used by %@.",
         shortcutUnavailable: "macOS rejected this shortcut. Choose another one.",

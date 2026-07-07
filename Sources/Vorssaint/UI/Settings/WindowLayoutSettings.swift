@@ -9,6 +9,10 @@ struct WindowLayoutSettings: View {
     @ObservedObject private var service = WindowLayoutService.shared
     @AppStorage(DefaultsKey.panelUtilityWindowLayout) private var showInPanel = true
     @AppStorage(DefaultsKey.windowLayoutShortcutsEnabled) private var shortcutsEnabled = true
+    // Same preference the Switcher page exposes next to Dock Preview; it is
+    // mirrored here because it is a window-juggling behavior people look for
+    // on this page too.
+    @AppStorage(DefaultsKey.dockClickCycleWindows) private var dockClickCycleWindows = false
 
     private var text: WindowLayoutFeatureStrings {
         FeatureStrings.windowLayout(l10n.language)
@@ -45,6 +49,16 @@ struct WindowLayoutSettings: View {
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
+            }
+
+            Section {
+                Toggle(l10n.s.dockClickCycleWindows, isOn: $dockClickCycleWindows)
+                    .onChange(of: dockClickCycleWindows) { _, _ in
+                        DockClickService.shared.syncWithPreferences()
+                    }
+                Text(l10n.s.dockClickCycleWindowsCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section(text.halves) {
@@ -174,13 +188,27 @@ private struct WindowLayoutActionRow: View {
                 }
                 .disabled(!applyEnabled)
                 Spacer()
-                ShortcutRecorderButton(shortcut: shortcut,
+                ShortcutRecorderButton(shortcut: shortcut ?? action.defaultShortcut,
                                        isEnabled: shortcutEnabled,
                                        recordingTitle: l10n.s.shortcutRecording,
+                                       emptyTitle: shortcut == nil ? l10n.s.shortcutNone : nil,
                                        invalidAction: { errorText = l10n.s.shortcutInvalid },
                                        captureAction: save)
                     .frame(width: 108, height: 28)
                     .disabled(!shortcutEnabled)
+                Button {
+                    rawValue = WindowLayoutAction.clearedShortcutStorageValue
+                    errorText = nil
+                    WindowLayoutService.shared.syncWithPreferences()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .disabled(!shortcutEnabled || shortcut == nil)
+                .help(l10n.s.shortcutClear)
+                .accessibilityLabel(l10n.s.shortcutClear)
                 Button(l10n.s.shortcutReset) {
                     rawValue = action.defaultShortcut.storageValue
                     errorText = nil
@@ -196,8 +224,9 @@ private struct WindowLayoutActionRow: View {
         }
     }
 
-    private var shortcut: GlobalShortcut {
-        GlobalShortcut(storageValue: rawValue) ?? action.defaultShortcut
+    private var shortcut: GlobalShortcut? {
+        WindowLayoutAction.resolvedShortcut(storedValue: rawValue,
+                                            defaultShortcut: action.defaultShortcut)
     }
 
     private func save(_ shortcut: GlobalShortcut) {

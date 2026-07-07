@@ -16,6 +16,8 @@ struct CutFeedbackView: View {
         Group {
             if let result = service.lastResult {
                 resultBody(result)
+            } else if let progress = service.moveProgress {
+                movingBody(progress)
             } else {
                 markedBody
             }
@@ -88,6 +90,40 @@ struct CutFeedbackView: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.top, 1)
+        }
+    }
+
+    // MARK: Moving (cross-volume, issue #168)
+
+    private func movingBody(_ progress: FinderCutPaste.MoveProgress) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.forward.circle")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.blue)
+                Text(l10n.s.cutMovingTitle)
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                if progress.total > 1 {
+                    Text(String(format: l10n.s.cutMovingCountFormat,
+                                CutPasteProgressSupport.displayPosition(completed: progress.completed,
+                                                                        total: progress.total),
+                                progress.total))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let fraction = progress.fraction {
+                ProgressView(value: fraction)
+                    .progressViewStyle(.linear)
+            } else {
+                ProgressView()
+                    .progressViewStyle(.linear)
+            }
+            Text(progress.currentName)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1).truncationMode(.middle)
         }
     }
 

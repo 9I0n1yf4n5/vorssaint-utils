@@ -160,8 +160,16 @@ enum MenuBarRenderer {
     private static let blockImageCache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
         cache.countLimit = 300
+        // The keys embed live metric values, so continuously changing numbers
+        // mint new entries all day; the byte ceiling keeps that harmless.
+        cache.totalCostLimit = 8 * 1024 * 1024
         return cache
     }()
+
+    /// Estimated bitmap bytes of a rendered block at 2x backing scale.
+    private static func blockImageCost(_ image: NSImage) -> Int {
+        max(1, Int(image.size.width * image.size.height) * 16)
+    }
 
     private struct MetricItem {
         var metric: MenuBarMetric
@@ -603,9 +611,11 @@ enum MenuBarRenderer {
     }
 
     private static func blockJoined(_ groups: [[MenuBarSegment]], style: MenuBarBlockStyle) -> [MenuBarSegment] {
+        let glue = MenuBarSpacingSupport.blockGlue(readableStyle: style == .readable,
+                                                   spacing: MenuBarMetricSpacing.current)
         var segments: [MenuBarSegment] = []
         for group in groups {
-            if !segments.isEmpty { segments.append(.text(style == .readable ? "  " : " ")) }
+            if !segments.isEmpty { segments.append(.text(glue)) }
             segments.append(contentsOf: group)
         }
         return segments
@@ -729,9 +739,16 @@ enum MenuBarRenderer {
 
     private static func metricBlockImage(label: String,
                                          value: String,
-                                         minimumValue: String,
+                                         minimumValue reservedValue: String,
                                          style: MenuBarBlockStyle,
                                          pressure: MemoryPressure?) -> NSImage {
+        // Compact spacing hugs the value's digit count (with a stability
+        // floor, see MenuBarSpacingSupport) instead of the metric's absolute
+        // maximum; the reserve participates in the cache key, so both modes
+        // cache correctly side by side.
+        let minimumValue = MenuBarMetricSpacing.current == .compact
+            ? MenuBarSpacingSupport.compactReserve(label: label, value: value)
+            : reservedValue
         let pressureKey = pressure.map(String.init(describing:)) ?? "none"
         let cacheKey = "metric|\(label)|\(value)|\(minimumValue)|\(style)|\(pressureKey)" as NSString
         if let cached = blockImageCache.object(forKey: cacheKey) { return cached }
@@ -774,7 +791,7 @@ enum MenuBarRenderer {
             return true
         }
         image.isTemplate = false
-        blockImageCache.setObject(image, forKey: cacheKey)
+        blockImageCache.setObject(image, forKey: cacheKey, cost: blockImageCost(image))
         return image
     }
 
@@ -827,7 +844,7 @@ enum MenuBarRenderer {
             return true
         }
         image.isTemplate = false
-        blockImageCache.setObject(image, forKey: cacheKey)
+        blockImageCache.setObject(image, forKey: cacheKey, cost: blockImageCost(image))
         return image
     }
 
@@ -879,7 +896,7 @@ enum MenuBarRenderer {
             return true
         }
         image.isTemplate = false
-        blockImageCache.setObject(image, forKey: cacheKey)
+        blockImageCache.setObject(image, forKey: cacheKey, cost: blockImageCost(image))
         return image
     }
 

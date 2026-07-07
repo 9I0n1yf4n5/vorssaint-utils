@@ -15,6 +15,8 @@ struct QuickToolsSettings: View {
     @AppStorage(DefaultsKey.colorPickerShortcutEnabled) private var colorShortcutEnabled = false
     @AppStorage(DefaultsKey.micMuteShortcutEnabled) private var micShortcutEnabled = false
     @AppStorage(DefaultsKey.colorPickerFormat) private var colorFormat = "hex"
+    @AppStorage(DefaultsKey.colorPickerBareHex) private var colorBareHex = false
+    @AppStorage(DefaultsKey.micMuteMenuBarIndicator) private var micMenuBarIndicator = false
 
     var body: some View {
         Form {
@@ -91,6 +93,9 @@ struct QuickToolsSettings: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                if colorFormat == ColorCopyFormat.hex.rawValue {
+                    Toggle(l10n.s.colorPickerBareHexToggle, isOn: $colorBareHex)
+                }
                 Toggle(l10n.s.quickToolShortcutToggle, isOn: $colorShortcutEnabled)
                     .onChange(of: colorShortcutEnabled) { _, _ in
                         ColorSamplerService.shared.syncWithPreferences()
@@ -121,6 +126,10 @@ struct QuickToolsSettings: View {
                         .foregroundStyle(.orange)
                 }
                 Text(l10n.s.micMuteCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Toggle(l10n.s.micMuteMenuBarToggle, isOn: $micMenuBarIndicator)
+                Text(l10n.s.micMuteMenuBarCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Toggle(l10n.s.quickToolShortcutToggle, isOn: $micShortcutEnabled)

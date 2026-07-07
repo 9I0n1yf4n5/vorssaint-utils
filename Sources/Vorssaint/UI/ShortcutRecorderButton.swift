@@ -9,6 +9,9 @@ struct ShortcutRecorderButton: NSViewRepresentable {
     let shortcut: GlobalShortcut
     let isEnabled: Bool
     let recordingTitle: String
+    /// When set, the button shows this instead of the shortcut, meaning "no
+    /// shortcut assigned"; clicking still records a new one.
+    var emptyTitle: String? = nil
     let invalidAction: () -> Void
     let captureAction: (GlobalShortcut) -> Void
 
@@ -30,6 +33,7 @@ struct ShortcutRecorderButton: NSViewRepresentable {
     private func apply(to button: RecorderButton) {
         button.shortcut = shortcut
         button.recordingTitle = recordingTitle
+        button.emptyTitle = emptyTitle
         button.invalidAction = invalidAction
         button.captureAction = captureAction
         button.isEnabled = isEnabled
@@ -40,6 +44,7 @@ struct ShortcutRecorderButton: NSViewRepresentable {
 final class RecorderButton: NSButton {
     var shortcut = GlobalShortcut.keepAwakeDefault
     var recordingTitle = ""
+    var emptyTitle: String?
     var invalidAction: (() -> Void)?
     var captureAction: ((GlobalShortcut) -> Void)?
     private var isRecording = false
@@ -81,8 +86,12 @@ final class RecorderButton: NSButton {
     }
 
     func refreshTitle() {
-        title = isRecording ? recordingTitle : shortcut.displayString
-        font = isRecording
+        if isRecording {
+            title = recordingTitle
+        } else {
+            title = emptyTitle ?? shortcut.displayString
+        }
+        font = isRecording || emptyTitle != nil
             ? .systemFont(ofSize: 13, weight: .medium)
             : .monospacedSystemFont(ofSize: 13, weight: .semibold)
     }

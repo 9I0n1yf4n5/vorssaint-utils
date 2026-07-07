@@ -284,8 +284,10 @@ final class WindowLayoutService: ObservableObject {
     // MARK: - Shortcuts
 
     private func registerHotkeys() {
-        let shortcuts = Dictionary(uniqueKeysWithValues: WindowLayoutAction.shortcutActions.map {
-            ($0, $0.savedShortcut)
+        // Cleared shortcuts are simply absent: their key combo stays free for
+        // other apps, which is the whole point of clearing them (issue #169).
+        let shortcuts = Dictionary(uniqueKeysWithValues: WindowLayoutAction.shortcutActions.compactMap { action in
+            action.savedShortcut.map { (action, $0) }
         })
         if !hotKeyRefs.isEmpty, shortcuts == registeredShortcuts { return }
         unregisterHotkeys()
@@ -313,7 +315,7 @@ final class WindowLayoutService: ObservableObject {
 
         var failures = Set<WindowLayoutAction>()
         for action in WindowLayoutAction.shortcutActions {
-            let shortcut = shortcuts[action] ?? action.defaultShortcut
+            guard let shortcut = shortcuts[action] else { continue }
             let id = EventHotKeyID(signature: 0x5655_574C, id: action.shortcutID) // 'VUWL'
             var ref: EventHotKeyRef?
             let status = RegisterEventHotKey(shortcut.carbonKeyCode,

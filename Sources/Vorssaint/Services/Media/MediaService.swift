@@ -322,18 +322,23 @@ final class MediaService: ObservableObject {
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, imageOptions as CFDictionary) else {
             throw MediaFailureBox(.unsupported)
         }
-        let type = typeIdentifier(for: options.format)
-        guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, type as CFString, 1, nil) else {
-            throw MediaFailureBox(.unsupported)
+        if options.format == .pdf {
+            try writePDF(image: image, outputURL: outputURL,
+                         quality: MediaSupport.sanitizedQuality(options.quality))
+        } else {
+            let type = typeIdentifier(for: options.format)
+            guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, type as CFString, 1, nil) else {
+                throw MediaFailureBox(.unsupported)
+            }
+            var outputProperties: [CFString: Any] = [
+                kCGImageDestinationLossyCompressionQuality: MediaSupport.sanitizedQuality(options.quality),
+            ]
+            if !options.stripMetadata {
+                outputProperties.merge(properties) { current, _ in current }
+            }
+            CGImageDestinationAddImage(destination, image, outputProperties as CFDictionary)
+            guard CGImageDestinationFinalize(destination) else { throw MediaFailureBox(.unsupported) }
         }
-        var outputProperties: [CFString: Any] = [
-            kCGImageDestinationLossyCompressionQuality: MediaSupport.sanitizedQuality(options.quality),
-        ]
-        if !options.stripMetadata {
-            outputProperties.merge(properties) { current, _ in current }
-        }
-        CGImageDestinationAddImage(destination, image, outputProperties as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else { throw MediaFailureBox(.unsupported) }
         MediaSupport.makeVisibleIfNeeded(outputURL)
         let result = MediaResult(tool: .imageCompressor,
                                  inputURL: inputURL,
@@ -383,6 +388,12 @@ final class MediaService: ObservableObject {
                                  elapsed: Date().timeIntervalSince(started),
                                  text: text)
         publish(.completed(result), operationID: operationID)
+    }
+
+    /// A dropped file that does not fit the selected tool: surface the same
+    /// "unsupported" message a failed run would, instead of accepting it.
+    func rejectUnsupportedInput() {
+        state = .failed(.unsupported)
     }
 
     private func prepareOutput(inputURL: URL, outputURL: URL) throws {
@@ -510,11 +521,39 @@ final class MediaService: ObservableObject {
         return try result.get()
     }
 
+    /// CGImageDestination accepts com.adobe.pdf but ignores the lossy quality,
+    /// embedding the bitmap losslessly. Re-encoding as JPEG at the chosen
+    /// quality and drawing that image into a PDF context makes Quartz embed
+    /// the JPEG stream as-is, so the quality slider keeps working for PDF.
+    private func writePDF(image: CGImage, outputURL: URL, quality: Double) throws {
+        let jpegData = NSMutableData()
+        guard let encoder = CGImageDestinationCreateWithData(jpegData, UTType.jpeg.identifier as CFString, 1, nil) else {
+            throw MediaFailureBox(.unsupported)
+        }
+        CGImageDestinationAddImage(encoder, image, [
+            kCGImageDestinationLossyCompressionQuality: quality,
+        ] as CFDictionary)
+        guard CGImageDestinationFinalize(encoder),
+              let encodedSource = CGImageSourceCreateWithData(jpegData, nil),
+              let encoded = CGImageSourceCreateImageAtIndex(encodedSource, 0, nil) else {
+            throw MediaFailureBox(.unsupported)
+        }
+        var mediaBox = CGRect(x: 0, y: 0, width: CGFloat(encoded.width), height: CGFloat(encoded.height))
+        guard let pdf = CGContext(outputURL as CFURL, mediaBox: &mediaBox, nil) else {
+            throw MediaFailureBox(.unsupported)
+        }
+        pdf.beginPDFPage(nil)
+        pdf.draw(encoded, in: mediaBox)
+        pdf.endPDFPage()
+        pdf.closePDF()
+    }
+
     private func typeIdentifier(for format: MediaImageFormat) -> String {
         switch format {
         case .jpeg: return UTType.jpeg.identifier
         case .heic: return UTType.heic.identifier
         case .png: return UTType.png.identifier
+        case .pdf: return UTType.pdf.identifier
         }
     }
 

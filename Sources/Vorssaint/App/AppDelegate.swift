@@ -878,8 +878,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     /// Rebuilds the menu bar item so the icon reappears when the OS has dropped it
     /// from a crowded or notched menu bar. Backs the "Show menu bar icon" button.
+    /// The rebuild can silently lose to a full bar or to a menu bar manager
+    /// (Ice, Bartender) stuffing the fresh item into its hidden section, so
+    /// after the frame settles this checks the icon really made it on screen
+    /// and, if not, says so instead of looking like the button did nothing.
     func reshowStatusItem() {
+        // The button is an explicit "I want the icon back": the hide-with-
+        // metrics option must not immediately re-hide what the user just
+        // asked to see (and then trip the "still hidden" alert).
+        UserDefaults.standard.set(false, forKey: DefaultsKey.menuBarHideIconWithMetrics)
         statusController?.recreateStatusItem(resetPlacement: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            guard let self, !self.iconIsOnScreen() else { return }
+            let s = L10n.shared.s
+            var body = s.menuBarIconStillHiddenBody
+            if let manager = Self.runningMenuBarManagerName() {
+                body += "\n\n" + String(format: s.menuBarIconManagerHintFormat, manager, manager)
+            }
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = s.menuBarIconStillHiddenTitle
+            alert.informativeText = body
+            alert.runModal()
+        }
+    }
+
+    /// Known menu bar organizers; any of them can be holding the icon in its
+    /// hidden section, which explains it never reappearing on this machine.
+    private static let menuBarManagerBundlePrefixes: [(prefix: String, name: String)] = [
+        ("com.jordanbaird.Ice", "Ice"),
+        ("com.surteesstudios.Bartender", "Bartender"),
+        ("com.dwarvesv.minimalbar", "Hidden Bar"),
+        ("com.mortenjust.Dozer", "Dozer"),
+    ]
+
+    private static func runningMenuBarManagerName() -> String? {
+        for app in NSWorkspace.shared.runningApplications {
+            guard let bundleID = app.bundleIdentifier else { continue }
+            if let match = menuBarManagerBundlePrefixes.first(where: { bundleID.hasPrefix($0.prefix) }) {
+                return app.localizedName ?? match.name
+            }
+        }
+        return nil
     }
 
     /// Quits and reopens the app. Full Disk Access only applies to a fresh
@@ -981,6 +1021,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     }
 
     private func showSupportUpdateIntroIfNeeded() -> Bool {
+        // Same shape as the showcase gate: the window belongs to one specific
+        // release. Any other version never shows it, so an update that is not
+        // that release cannot resurrect the ask.
+        guard AppInfo.version == SupportUpdateIntroInfo.releaseVersion else { return false }
         guard UserDefaults.standard.string(forKey: DefaultsKey.supportUpdateIntroVersion)
                 != SupportUpdateIntroInfo.releaseVersion else { return false }
         showSupportUpdateIntro()

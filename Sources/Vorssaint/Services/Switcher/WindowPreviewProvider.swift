@@ -23,12 +23,32 @@ final class WindowPreviewProvider {
     private var cache: [CGWindowID: CGImage] = [:]
     private var lastTouched: [CGWindowID: TimeInterval] = [:]
     private static let cacheLimit = 48
+    /// Upper bound on the bytes the thumbnail cache may hold; the count limit
+    /// alone would allow ~160 MB of big-window thumbnails.
+    private static let cacheByteBudget = 64 * 1024 * 1024
     private var captureTask: Task<Void, Never>?
     private var warmTask: Task<Void, Never>?
     private var activationToken: NSObjectProtocol?
     private var pendingWarmPid: pid_t?
+    private var pressureSource: DispatchSourceMemoryPressure?
 
-    init() {}
+    init() {
+        // Thumbnails are pure convenience; when the system runs out of memory
+        // they are the first thing this app sheds. They re-capture on the next
+        // invocation (Stage Manager parked windows fall back to app icons
+        // until their window becomes active again).
+        let source = DispatchSource.makeMemoryPressureSource(eventMask: .critical, queue: .main)
+        source.setEventHandler { [weak self] in
+            self?.cache.removeAll()
+            self?.lastTouched.removeAll()
+        }
+        source.resume()
+        pressureSource = source
+    }
+
+    deinit {
+        pressureSource?.cancel()
+    }
 
     func cachedPreview(for windowID: CGWindowID) -> CGImage? {
         if cache[windowID] != nil {
@@ -88,15 +108,16 @@ final class WindowPreviewProvider {
                     // is cached, an upright rectified version stands in until
                     // the window becomes active and a clean capture replaces it.
                     if let rectified = Self.rectifiedStripCapture(image) {
+                        let copy = Self.bitmapCopy(rectified)
                         await MainActor.run {
                             guard !Task.isCancelled, self.cache[target.id] == nil else { return }
-                            self.store(rectified, for: target.id)
-                            onUpdate(target.id, rectified)
+                            self.store(copy, for: target.id)
+                            onUpdate(target.id, copy)
                         }
                     }
                     continue
                 }
-                let scaled = Self.downscaled(image, maxPixelSize: maxPixelSize)
+                let scaled = Self.bitmapCopy(image, maxPixelSize: maxPixelSize)
                 await MainActor.run {
                     guard !Task.isCancelled else { return }
                     self.store(scaled, for: target.id)
@@ -134,19 +155,21 @@ final class WindowPreviewProvider {
                 if let grid = SwitcherSupport.alphaGrid(of: image),
                    SwitcherSupport.captureLooksTransformed(alphaGrid: grid) {
                     if let rectified = Self.rectifiedStripCapture(image) {
+                        let copy = Self.bitmapCopy(rectified)
                         await MainActor.run {
                             guard !Task.isCancelled, self.cache[target.id] == nil else { return }
-                            self.store(rectified, for: target.id)
-                            onUpdate(target.id, rectified)
+                            self.store(copy, for: target.id)
+                            onUpdate(target.id, copy)
                         }
                     }
                     continue
                 }
 
+                let copy = Self.bitmapCopy(image, maxPixelSize: maxPixelSize)
                 await MainActor.run {
                     guard !Task.isCancelled else { return }
-                    self.store(image, for: target.id)
-                    onUpdate(target.id, image)
+                    self.store(copy, for: target.id)
+                    onUpdate(target.id, copy)
                 }
             }
         }
@@ -259,11 +282,16 @@ final class WindowPreviewProvider {
         return rendered
     }
 
-    private static func downscaled(_ image: CGImage, maxPixelSize: CGFloat) -> CGImage {
+    /// Redraws a capture into a bitmap this process owns, downscaling to
+    /// `maxPixelSize` when the source is larger. Window-server, SCK and Core
+    /// Image captures are surface-backed by the system; caching one directly
+    /// would pin that surface (and whatever the OS charges to it) for as long
+    /// as the thumbnail lives, so the cache only ever holds plain copies.
+    private static func bitmapCopy(_ image: CGImage,
+                                   maxPixelSize: CGFloat = .greatestFiniteMagnitude) -> CGImage {
         let width = CGFloat(image.width)
         let height = CGFloat(image.height)
         let scale = min(1, maxPixelSize / max(width, height, 1))
-        guard scale < 1 else { return image }
         let scaledWidth = max(1, Int(width * scale))
         let scaledHeight = max(1, Int(height * scale))
         guard let context = CGContext(data: nil,
@@ -274,7 +302,7 @@ final class WindowPreviewProvider {
                                       space: CGColorSpaceCreateDeviceRGB(),
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         else { return image }
-        context.interpolationQuality = .high
+        context.interpolationQuality = scale < 1 ? .high : .default
         context.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(scaledWidth), height: CGFloat(scaledHeight)))
         return context.makeImage() ?? image
     }
@@ -295,6 +323,15 @@ final class WindowPreviewProvider {
                                                         lastTouched: lastTouched,
                                                         limit: Self.cacheLimit)
         for id in victims {
+            cache[id] = nil
+            lastTouched[id] = nil
+        }
+        let byteVictims = SwitcherSupport.cacheByteBudgetVictims(
+            sizes: cache.mapValues { $0.bytesPerRow * $0.height },
+            active: active,
+            lastTouched: lastTouched,
+            budget: Self.cacheByteBudget)
+        for id in byteVictims {
             cache[id] = nil
             lastTouched[id] = nil
         }
@@ -360,14 +397,15 @@ final class WindowPreviewProvider {
                     if let grid = SwitcherSupport.alphaGrid(of: image),
                        SwitcherSupport.captureLooksTransformed(alphaGrid: grid) {
                         if let rectified = Self.rectifiedStripCapture(image) {
+                            let copy = Self.bitmapCopy(rectified)
                             await MainActor.run {
                                 guard self.cache[id] == nil else { return }
-                                self.store(rectified, for: id)
+                                self.store(copy, for: id)
                             }
                         }
                         continue
                     }
-                    let scaled = Self.downscaled(image, maxPixelSize: Self.defaultMaxPixelSize)
+                    let scaled = Self.bitmapCopy(image, maxPixelSize: Self.defaultMaxPixelSize)
                     await MainActor.run { self.store(scaled, for: id) }
                 }
                 await MainActor.run { self.pruneCache(keeping: []) }

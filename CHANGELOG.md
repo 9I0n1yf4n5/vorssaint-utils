@@ -4,6 +4,233 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.8] - 2026-07-07
+
+### Summary
+Vorssaint 3.1.8 polishes the whole app. The Settings window gains a search
+field and clearer groups, the menu bar metrics learn a compact spacing and
+can stand alone without the app icon, and the image converter now produces
+PDFs. Community requests came along: an optional mute indicator beside the
+menu bar icon, a progress bar when files move to another disk, and HEX
+colors copied without the # sign. Under the hood, in app updates now
+install reliably and show download progress, the shelf keeps its items
+across restarts and updates, the quick panel works properly with file
+dialogs and drag and drop, and the menu bar panel no longer flickers on
+the Volume Mixer page on Macs with busy audio activity.
+
+### Added
+- The quick panel now has a close button, so it can be dismissed with the
+  mouse as well as with Esc. The first nine tiles also show a small number
+  badge, since pressing 1 to 9 launches them straight from the keyboard.
+- The quick panel's edit mode now adjusts tools in place: tiles with a gear
+  badge (Keep awake, Mute microphone, Color picker and Clipboard) open a
+  small card with their closest options, like keeping the Mac going with
+  the lid closed, the default duration, the muted mic indicator in the menu
+  bar, the copied color format and the clipboard history limit, with no
+  trip to the Settings window.
+- The window layout grid can now hide the arrangements you never use: a
+  tune button in its header switches the buttons to visibility toggles, and
+  hidden actions leave the grid while their keyboard shortcuts keep
+  working. Most people use a handful of layouts; now the grid can look
+  like it.
+- Clicking the Dock icon of the app you are using can now cycle through
+  its open windows, like the Command backtick shortcut but with the mouse,
+  thanks to a community contribution. Off by default, next to the Dock
+  click to minimize option; with both turned on, apps with several windows
+  cycle and apps with a single window still minimize.
+- Middle click can now also fire from a light trackpad tap, without
+  pressing: choose three or four fingers next to the middle click option in
+  the Mouse settings. Off by default; sliding touches never count, and the
+  four-finger choice sidesteps the macOS three-finger drag gesture entirely.
+- The menu bar icon now shows when the microphone is muted: a red
+  crossed-out mic appears beside it while the mute is on, so a live call
+  never catches you guessing. On by default and invisible until you
+  actually mute; the switch lives next to the Mute microphone option in
+  the Quick Tools settings.
+- Cut and paste in Finder now shows progress when files move to a different
+  disk: the floating card gains a progress bar with the file name and the
+  position in the batch while the copy is still running. Moves inside the
+  same disk stay instant and skip the bar.
+- The Color Picker can copy HEX values without the leading # sign, for
+  design tools that reject it. The option appears under the format choice in
+  the Quick Tools settings whenever HEX is selected.
+- The image converter can now turn any image into a PDF, following a user
+  request: PDF joins JPEG, HEIC and PNG in the format choice, handy when a
+  form or service only accepts PDF documents. The quality and maximum size
+  controls keep working, so a photo can be shrunk into a small PDF before
+  it is submitted. With PDF chosen the start button says Convert to PDF,
+  and whenever a result comes out bigger than the original the done card
+  says so, since growth is normal for a small photo wrapped in a document.
+- The Settings window gained a search field at the top of the sidebar:
+  type a few letters and only the matching pages remain, accents and case
+  ignored. It also searches by what lives inside each page, so "lid" finds
+  Energy and "quick panel" finds Quick tools. With over twenty pages,
+  finding the right one no longer depends on remembering which group it
+  lives in.
+- In app updates now show download progress: the panel banner gets a real
+  progress bar with a percentage while the new version downloads, and the
+  About page shows the same percentage, so a slow connection no longer
+  looks like a stuck update.
+- Window layout shortcuts can now be removed one by one, following user
+  feedback: most people use a handful of layouts, and every assigned
+  shortcut occupies a system-wide key combo other apps then cannot use. A
+  new remove button next to each layout clears its shortcut (the button
+  shows None), Reset brings the original back, and cleared shortcuts are
+  simply never registered.
+- Monitor alerts can now fire as often as every 2 minutes, following user
+  feedback that 5 minutes was too long to wait for a memory pressure
+  warning. And when notifications for Vorssaint are turned off in System
+  Settings, the alerts section now says so, instead of leaving enabled
+  alerts silently dead.
+- A new Keyboard shortcuts page in Settings lists every global shortcut
+  currently active in one place, including the window layout combos, so
+  nobody has to remember which feature page holds which one. Each shortcut
+  keeps being configured where its feature lives.
+- The app icon can now step aside while metrics are in the menu bar,
+  following user feedback: a new option in the Monitor settings hides the
+  icon so only your readings take up space, whether they sit next to the
+  icon or as separate items. The icon comes back by itself whenever it is
+  needed, when metrics leave the bar and when there is something to show
+  you, like a ready update or the muted microphone indicator.
+- Menu bar metrics gained a spacing choice, following user feedback that
+  the gaps between readings looked too wide. The new Compact look is the
+  default: it hugs the numbers, making the whole strip about a quarter
+  narrower while still holding enough room that readings can move between
+  one and two digits without the bar wobbling. The Standard option in the
+  Monitor settings keeps the old behavior of reserving room for each
+  metric's largest value.
+
+### Changed
+- The app reads much better with VoiceOver: the quick panel tiles, the
+  edit badges, the inline option switches and the window layout controls
+  now carry proper spoken labels instead of announcing only "button".
+- Esc in the quick panel now steps back one layer at a time, closing the
+  open options card first, then leaving edit mode, then hiding the panel.
+  And a quick panel with every tool hidden now explains how to bring them
+  back instead of showing an unrelated hint.
+- Panel rows now show their feature's keyboard shortcut in a quiet badge
+  when one is active, so the quick panel, Clipboard, Copy text from screen,
+  Color picker and Mute microphone remind you of the faster way in. The
+  quick panel row also moved to the top of the Utilities section by
+  default; a custom order stays as you arranged it.
+- The Settings sidebar got clearer groups: a new Files section gathers the
+  Clipboard, Cut and paste, Shelf and Media pages, window features stay
+  together under Window controls, and Utilities keeps the quick tools. The
+  same pages, in places that are easier to guess.
+- The introduction now presents the quick panel on its own page, with the
+  shortcut and a button to open it right away. It is the fastest way into
+  the app's tools and used to be easy to miss.
+- The introduction was tightened from sixteen pages to ten: the separate
+  tour pages for Cut and paste, Quit on close, the Uninstaller and the
+  Temporary area became simple switches on the Optional features page, and
+  each feature's own Settings page keeps the full explanation. Installing
+  the app should take half a minute, not a slideshow.
+- The memory pressure dot option now sits directly under the Memory row in
+  the Monitor settings, next to the metric it controls, matching the
+  Network row's inline option. Contributed by Games55k.
+- App icons in the Volume Mixer are much bigger now, sitting beside each
+  app's name and volume slider, so rows are easier to recognize at a glance.
+- Selecting several clipboard items now works the Finder way, following
+  user feedback: ⌘-click or ⇧-click select rows (an empty checkbox appears
+  on hover), and with a selection active the window shows Paste and Copy
+  buttons with the count. ⌘C copies the selection without pasting, ready
+  for ⌘V wherever you are; Enter and a plain click still paste directly,
+  ⌘A selects all visible results and Esc clears the selection first.
+  Copied files and images can join a selection too: a files-only selection
+  pastes the files themselves, a selection with images pastes as rich text
+  with the images embedded (Notes, Mail and TextEdit take everything
+  together, plain apps receive the text), and text with file paths combines
+  as text.
+  Modifier clicks on rows also work reliably now: the window used to treat
+  ⌘-click as a window-drag grab, so it never reached the row.
+
+### Removed
+- The List navigation mode of the panel is gone: the panel always navigates
+  by sections now. Sections were the default and where all the attention
+  goes; keeping a second layout of the same panel doubled the ways it
+  could break.
+
+### Fixed
+- The introduction could get stuck on the menu bar metrics page: the list
+  of metrics outgrew the window and pushed the Continue button out of it.
+  Every introduction page now scrolls when needed, and the navigation
+  buttons always stay visible.
+- Per app memory in the Monitor now matches Activity Monitor: it shows the
+  same physical footprint figure Activity Monitor uses, instead of a raw
+  measure that counts shared memory twice and reads far too high for many
+  apps.
+- Zoom and music production apps now appear in the Volume Mixer again as
+  informational rows saying the app manages its own audio, instead of
+  silently missing from the list. They are still never touched by the
+  mixer, which is what keeps their calls and sessions working.
+- The switcher could miss many apps on busy Macs, including the app in
+  front of you and freshly opened ones. The switcher keeps at most 24
+  entries, but the cut used to happen in the window server's raw order,
+  which puts windows parked on other Spaces before visible ones; now every
+  window is collected first, sorted by most recent use, and only then
+  trimmed, so the apps you actually use always make the list.
+- Routing a music production app through the Volume Mixer could leave it
+  producing no sound at all: apps like Logic Pro, Ableton Live, Cubase,
+  Studio One, Pro Tools, REAPER and other DAWs drive their own audio device
+  and clock, which the mixer's tap cannot do for them. The mixer now leaves
+  these apps untouched, the same way it already does for Zoom, so their
+  audio always keeps playing; use the DAW's own output settings to route
+  them.
+- Memory use now stays flat over long sessions, answering reports of the
+  app growing to several gigabytes after days of heavy use. Window
+  thumbnails for the switcher and Dock Preview are copied into the app's
+  own memory instead of holding on to system graphics surfaces, respect a
+  memory budget besides the entry count, and are released automatically
+  when the Mac runs low on memory; clipboard image previews and the menu
+  bar metric renders got hard memory ceilings; and the Volume Mixer lets
+  go of its per app audio listeners when apps quit.
+- The Show menu bar icon button now places the rebuilt icon beside the
+  clock, the last spot macOS hides when the menu bar runs out of room. It
+  used to put the icon back at the end near the notch, the first spot to be
+  hidden, so on crowded menu bars the button looked like it did nothing. And
+  when the icon still cannot appear, the app now explains why (a full menu
+  bar, or a menu bar manager like Ice or Bartender keeping it in its hidden
+  section) instead of staying silent.
+- A drawing bug made icons render at half their intended size across the
+  app, in the Volume Mixer, in the Monitor process rows and in shelf tiles.
+  Icons now draw at their full size.
+- Updating from inside the app could close it without applying the new
+  version and without any explanation. Now, when your user account cannot
+  write to the Applications folder, the app asks for an administrator
+  password instead of failing silently; with Gatekeeper turned off, the
+  update no longer fails its safety check by mistake; running from the disk
+  image, the app explains it needs to be moved to Applications first; and if
+  an update still cannot be applied, the app tells you why after it
+  restarts, brings the offer right back, and routes the next attempt
+  through the administrator password when the failure looked like a
+  permission problem, instead of leaving you on the old version without a
+  word.
+- Choosing a file from a tool in the quick panel now works. The file dialog
+  used to come up unresponsive (folders would not open, files could not be
+  selected and only Cancel reacted), and any click inside it could close the
+  quick panel in the middle of the selection.
+- The quick panel no longer closes on its own while a tool is open inside
+  it. Clicking another app to drag a file into Media, answering a system
+  prompt from the Uninstaller, or leaving Homebrew working no longer
+  dismisses the panel. With just the launcher grid showing, clicking outside
+  still closes it, as before.
+- Items placed on the shelf (files, images, text and links) were erased
+  whenever the app restarted, including on every update. The shelf now
+  remembers its items: they are saved as you add and remove them and come
+  back after a restart or an update. Images and GIFs pasted straight into
+  the shelf are stored safely for this too, and an item whose file no longer
+  exists on disk is skipped instead of coming back as a broken tile.
+- The menu bar panel no longer flickers repeatedly while the Volume Mixer
+  page is open. The panel used to redraw for every audio system event, even
+  when nothing visible changed, so on Macs with busy audio activity (wireless
+  audio devices renegotiating, apps opening and closing audio connections)
+  it flickered constantly while open. The mixer now updates only when
+  something on screen actually changes, and bursts of audio events are
+  folded into a single update.
+- Two apps with the same name in the Volume Mixer, or two audio devices with
+  the same name in the output and microphone lists, could swap places with
+  each other whenever the list refreshed. Rows now keep a stable order.
+
 ## [3.1.7] - 2026-07-04
 
 ### Summary

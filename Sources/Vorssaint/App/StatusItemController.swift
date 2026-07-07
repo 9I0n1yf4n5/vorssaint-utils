@@ -17,6 +17,9 @@ final class StatusItemController {
     private var cancellables = Set<AnyCancellable>()
     private var titleTimer: Timer?
     private var defaultsObserver: NSObjectProtocol?
+    /// Last combination applied by updateIconAppearance, so refresh ticks
+    /// don't re-render an unchanged icon every 2 seconds.
+    private var lastIconStateKey = ""
     private static let mainAutosaveName = "VorssaintMenuBarItem"
     private static let metricAutosavePrefix = "VorssaintMetric"
     private static let maxPlacementGeneration = 10_000
@@ -63,6 +66,9 @@ final class StatusItemController {
     /// recovers access (see applicationShouldHandleReopen) and the "Show menu bar
     /// icon" button in Settings rebuilds it.
     private func installStatusItem() {
+        // A fresh NSStatusItem starts blank; the memoized icon state belongs
+        // to the previous instance and must not suppress the first apply.
+        lastIconStateKey = ""
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         // A stable identity so macOS remembers the item's position across launches
         // and across rebuilds, instead of re-placing it at the crowded default spot.
@@ -90,9 +96,23 @@ final class StatusItemController {
     func recreateStatusItem(resetPlacement: Bool = false) {
         if resetPlacement {
             Self.bumpPlacementGeneration(in: .standard)
+            Self.seedProtectedPlacement(in: .standard)
         }
         if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
         installStatusItem()
+    }
+
+    /// Placed with no saved position, a new item lands at the LEFT end of the
+    /// status area, right by the notch, which is the first zone macOS hides
+    /// when the bar runs out of room. That made the recovery useless exactly
+    /// on the crowded bars that lose the icon (issue #167). Seeding a small
+    /// preferred position (distance from the screen's right edge) makes the
+    /// rebuilt item claim a spot beside the clock, the last zone to be hidden.
+    private static let protectedPlacementOffset: Double = 64
+
+    private static func seedProtectedPlacement(in defaults: UserDefaults) {
+        defaults.set(protectedPlacementOffset,
+                     forKey: "NSStatusItem Preferred Position \(mainAutosaveName(in: defaults))")
     }
 
     private static func placementGeneration(in defaults: UserDefaults) -> Int {
@@ -126,6 +146,11 @@ final class StatusItemController {
             .store(in: &cancellables)
 
         UpdateService.shared.$state
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.updateIconAppearance() }
+            .store(in: &cancellables)
+
+        MicMuteService.shared.$isMuted
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.updateIconAppearance() }
             .store(in: &cancellables)
@@ -179,12 +204,67 @@ final class StatusItemController {
 
     /// Reflects keep-awake state and an available update in the icon. Updates
     /// keep the blue attention color; an active keep-awake session turns amber.
+    /// With the mute indicator option on, a red slashed mic joins the glyph
+    /// while the microphone is muted, whatever the underlying state. The
+    /// glyph can also hide entirely while metrics render in the title (user
+    /// option); the decision reads the button's actual title, so it must run
+    /// AFTER refresh() writes it — refresh() calls this at its end.
     private func updateIconAppearance() {
         guard let button = statusItem?.button else { return }
+        let defaults = UserDefaults.standard
+        let updateAvailable: Bool
         if case .available = UpdateService.shared.state {
-            button.image = BlackHoleGlyph.attentionImage()
+            updateAvailable = true
         } else {
-            button.image = BlackHoleGlyph.image(active: KeepAwakeManager.shared.isActive)
+            updateAvailable = false
+        }
+        let micBadgeActive = MicMuteService.shared.isMuted
+            && defaults.bool(forKey: DefaultsKey.micMuteMenuBarIndicator)
+        let optionEnabled = defaults.bool(forKey: DefaultsKey.menuBarHideIconWithMetrics)
+        let separateMetrics = defaults.bool(forKey: DefaultsKey.menuBarSeparateMetrics)
+        let signal = updateAvailable || micBadgeActive
+        let hidden = MenuBarSpacingSupport.shouldHideStatusIcon(
+            optionEnabled: optionEnabled,
+            separateMetrics: separateMetrics,
+            metricsEnabled: MenuBarMetric.anyEnabled(in: defaults),
+            renderedTitleLength: button.attributedTitle.length,
+            mustShowForSignal: signal)
+        // In the separate-items mode the metrics are their own clickable
+        // items, so hiding means the whole main item steps aside instead of
+        // just its image (which is all that item has).
+        let mainItemHidden = MenuBarSpacingSupport.shouldHideMainStatusItem(
+            optionEnabled: optionEnabled,
+            separateMetrics: separateMetrics,
+            metricItemsShown: metricStatusItems.count,
+            renderedTitleLength: button.attributedTitle.length,
+            mustShowForSignal: signal)
+        let keepAwakeActive = KeepAwakeManager.shared.isActive
+
+        // refresh() runs on every monitor tick and lands here; re-rendering
+        // the same image every 2 seconds would be wasted composition, so the
+        // image is only touched when some ingredient actually changed.
+        let stateKey = [String(hidden), String(mainItemHidden), String(updateAvailable),
+                        String(keepAwakeActive), KeepAwakeIconTint.current.rawValue,
+                        String(micBadgeActive)].joined(separator: "|")
+        guard stateKey != lastIconStateKey else { return }
+        lastIconStateKey = stateKey
+
+        statusItem.isVisible = !mainItemHidden
+
+        guard !hidden else {
+            button.image = nil
+            return
+        }
+        let stateImage: NSImage?
+        if updateAvailable {
+            stateImage = BlackHoleGlyph.attentionImage()
+        } else {
+            stateImage = BlackHoleGlyph.image(active: keepAwakeActive)
+        }
+        if micBadgeActive {
+            button.image = BlackHoleGlyph.micMutedImage(over: stateImage) ?? stateImage
+        } else {
+            button.image = stateImage
         }
     }
 
@@ -246,7 +326,26 @@ final class StatusItemController {
             button.attributedTitle = NSAttributedString(string: "")
             button.imagePosition = .imageOnly
         } else {
-            let full = NSMutableAttributedString(string: " ")
+            // The leading space separates the glyph from the text; with the
+            // glyph hidden by the metrics-only option it would be pure dead
+            // padding on the item's left edge. Same decision inputs as
+            // updateIconAppearance, with a sentinel length: the title is
+            // known non-empty on this branch.
+            let updateAvailable: Bool
+            if case .available = UpdateService.shared.state {
+                updateAvailable = true
+            } else {
+                updateAvailable = false
+            }
+            let micBadgeActive = MicMuteService.shared.isMuted
+                && defaults.bool(forKey: DefaultsKey.micMuteMenuBarIndicator)
+            let glyphHidden = MenuBarSpacingSupport.shouldHideStatusIcon(
+                optionEnabled: defaults.bool(forKey: DefaultsKey.menuBarHideIconWithMetrics),
+                separateMetrics: separateMetrics,
+                metricsEnabled: !metrics.isEmpty,
+                renderedTitleLength: 1,
+                mustShowForSignal: updateAvailable || micBadgeActive)
+            let full = NSMutableAttributedString(string: glyphHidden ? "" : " ")
             full.append(title)
             let stacked = full.string.contains("\n")
             let font = MenuBarRenderer.statusFont(stacked: stacked)
@@ -278,6 +377,11 @@ final class StatusItemController {
         } else {
             button.toolTip = strings.statusIdleTooltip
         }
+
+        // The icon decision depends on the title just written (the glyph may
+        // hide only while metrics actually render), so it re-runs here — the
+        // one place where title and icon can never get out of step.
+        updateIconAppearance()
     }
 
     private func refreshMetricStatusItems(metrics: [MenuBarMetric],
@@ -463,6 +567,41 @@ enum BlackHoleGlyph {
     /// (a real color), drawn by masking blue into the glyph's shape.
     static func attentionImage() -> NSImage? {
         tintedImage(color: .systemBlue) ?? fallback(active: true)
+    }
+
+    /// The given state image with a red slashed microphone beside it, shown
+    /// while the mute indicator option is on and the mic is muted. The badge
+    /// is a real color, so the composite can't stay a template image; the
+    /// drawing handler runs against the destination appearance, which keeps a
+    /// template underlying glyph legible on both light and dark menu bars.
+    static func micMutedImage(over underlying: NSImage?) -> NSImage? {
+        guard let underlying else { return nil }
+        guard let badge = NSImage(systemSymbolName: "mic.slash.fill",
+                                  accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 11, weight: .semibold)) else { return nil }
+        let gap: CGFloat = 2
+        let badgeSize = badge.size
+        let height = max(underlying.size.height, badgeSize.height)
+        let size = NSSize(width: underlying.size.width + gap + badgeSize.width, height: height)
+        let composed = NSImage(size: size, flipped: false) { _ in
+            let glyphRect = NSRect(x: 0, y: (height - underlying.size.height) / 2,
+                                   width: underlying.size.width, height: underlying.size.height)
+            underlying.draw(in: glyphRect, from: .zero, operation: .sourceOver, fraction: 1)
+            if underlying.isTemplate {
+                // Template pixels carry no usable color of their own.
+                NSColor.labelColor.setFill()
+                glyphRect.fill(using: .sourceAtop)
+            }
+            let badgeRect = NSRect(x: underlying.size.width + gap,
+                                   y: (height - badgeSize.height) / 2,
+                                   width: badgeSize.width, height: badgeSize.height)
+            badge.draw(in: badgeRect, from: .zero, operation: .sourceOver, fraction: 1)
+            NSColor.systemRed.setFill()
+            badgeRect.fill(using: .sourceAtop)
+            return true
+        }
+        composed.isTemplate = false
+        return composed
     }
 
     private static func tintedImage(color: NSColor) -> NSImage? {

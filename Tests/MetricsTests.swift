@@ -136,22 +136,22 @@ struct MetricsTests {
         expect(ClipboardHistorySearch.rankedIndexes(candidates: clipboardCandidates,
                                                     matching: "missing") == [],
                "clipboard search returns no results for unmatched terms")
-        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("copiar e colar"),
+        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("colar no app anterior"),
                "clipboard shortcut hint exposes row click paste in Portuguese")
-        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("⌘+clique só copia"),
-               "clipboard shortcut hint exposes command click copy-only in Portuguese")
+        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("⌘+clique seleciona"),
+               "clipboard shortcut hint exposes command click multi-select in Portuguese")
         expect(FeatureStrings.clipboard(.ptBR).clickRowShortcut == "Clique na linha",
                "clipboard visual shortcut exposes row click in Portuguese")
-        expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("copy and paste"),
+        expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("paste it into the previous app"),
                "clipboard shortcut hint exposes row click paste in English")
-        expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("⌘-click only copies"),
-               "clipboard shortcut hint exposes command click copy-only in English")
+        expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("⌘-click selects"),
+               "clipboard shortcut hint exposes command click multi-select in English")
         expect(FeatureStrings.clipboard(.enUS).commandClickShortcut == "⌘ Click",
                "clipboard visual shortcut exposes command click in English")
-        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("kopyalayıp yapıştır"),
+        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("yapıştırın"),
                "clipboard shortcut hint exposes row click paste in Turkish")
-        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("yalnızca kopyalar"),
-               "clipboard shortcut hint exposes command click copy-only in Turkish")
+        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("birden çok öğe seçer"),
+               "clipboard shortcut hint exposes command click multi-select in Turkish")
         expect(FeatureStrings.clipboard(.tr).clickRowShortcut == "Satıra tıkla",
                "clipboard visual shortcut exposes row click in Turkish")
         let featureTitles: [(AppLanguage, String, String, String, String)] = [
@@ -180,8 +180,10 @@ struct MetricsTests {
         }
         for language in AppLanguage.allCases {
             let clipboardStrings = FeatureStrings.clipboard(language)
-            expectFormat(clipboardStrings.selectedCountFormat, ["d"],
-                         "\(language.rawValue) clipboard selected count format")
+            expectFormat(clipboardStrings.pasteSelectedFormat, ["d"],
+                         "\(language.rawValue) paste-selected button format")
+            expectFormat(clipboardStrings.copySelectedFormat, ["d"],
+                         "\(language.rawValue) copy-selected button format")
             let alertStrings = FeatureStrings.monitorAlerts(language)
             expectFormat(alertStrings.cpuBodyFormat, ["d"], "\(language.rawValue) CPU alert format")
             expectFormat(alertStrings.cpuTemperatureBodyFormat, ["d"],
@@ -199,6 +201,34 @@ struct MetricsTests {
         expect(ClipboardHistoryBatch.orderedSelectedIndexes(allIDs: ["a", "b", "c", "d"],
                                                            selectedIDs: Set(["d", "b"])) == [1, 3],
                "clipboard batch preserves the visible history order")
+        expect(ClipboardHistoryBatch.rangeSelectionIDs(allIDs: ["a", "b", "c", "d"],
+                                                       anchor: 3, target: 1) == ["b", "c", "d"],
+               "shift-click selects the whole range in either direction")
+        expect(ClipboardHistoryBatch.rangeSelectionIDs(allIDs: ["a"], anchor: 9, target: -2) == ["a"],
+               "shift-click range clamps out-of-bounds anchors")
+        let batchTextA = ClipboardHistoryEntry(text: "alpha")
+        let batchTextB = ClipboardHistoryEntry(text: "beta")
+        let batchFiles = ClipboardHistoryEntry(text: "", kind: .files,
+                                               filePaths: ["/tmp/a.txt", "/tmp/b.txt"])
+        let batchImage = ClipboardHistoryEntry(text: "", kind: .image, imageFile: "x.png")
+        expect(ClipboardHistoryBatch.pasteMode(for: [batchFiles, batchFiles])
+                   == .files(["/tmp/a.txt", "/tmp/b.txt", "/tmp/a.txt", "/tmp/b.txt"]),
+               "an all-files selection pastes as the files themselves")
+        expect(ClipboardHistoryBatch.pasteMode(for: [batchTextA, batchTextB])
+                   == .text("alpha\nbeta"),
+               "an all-text selection combines as lines")
+        expect(ClipboardHistoryBatch.pasteMode(for: [batchTextA, batchFiles])
+                   == .text("alpha\n/tmp/a.txt\n/tmp/b.txt"),
+               "a mixed selection combines as text with file paths inlined")
+        expect(ClipboardHistoryBatch.pasteMode(for: [batchTextA, batchImage])
+                   == .rich([.text("alpha"), .image("x.png")]),
+               "a selection with an image pastes as rich text with the image embedded")
+        expect(ClipboardHistoryBatch.pasteMode(for: [batchImage, batchFiles])
+                   == .rich([.image("x.png"), .text("/tmp/a.txt\n/tmp/b.txt")]),
+               "files in a rich selection contribute their paths as text")
+        expect(ClipboardHistoryBatch.richPlainText([.text("alpha"), .image("x.png"), .text("beta")])
+                   == "alpha\nbeta",
+               "the plain-text fallback of a rich batch keeps only the text parts")
 
         let legacyClipboardJSON = Data("""
         [{"text":"hello","copiedAt":700000000}]
@@ -712,8 +742,13 @@ struct MetricsTests {
                "update showcase intro starts unseen")
         expect(registeredDefaults[DefaultsKey.updateShowcaseMediaOverride] as? String == "",
                "update showcase media override is empty by default")
-        expect(SupportUpdateIntroInfo.releaseVersion == AppInfo.version,
-               "support prompt targets the current app version for every update")
+        expect(SupportUpdateIntroInfo.releaseVersion == "3.1.8",
+               "support prompt is deliberately pinned to this release (owner's call)")
+        // AppInfo.version falls back to "dev" in this bare harness, so read
+        // the plist the shipped app will actually carry.
+        let plistVersion = (NSDictionary(contentsOfFile: "Resources/Info.plist")?["CFBundleShortVersionString"] as? String) ?? ""
+        expect(SupportUpdateIntroInfo.releaseVersion == plistVersion,
+               "a pin that lags the app version would silently never show the window")
         expect(registeredDefaults[DefaultsKey.mixerLowerVolumeOnHeadphonesDisconnect] as? Bool == false,
                "headphone disconnect volume lowering is opt-in")
         expect(registeredDefaults[DefaultsKey.mixerHeadphonesDisconnectVolumePercent] as? Int == 0,
@@ -762,6 +797,92 @@ struct MetricsTests {
                "panel Dock Preview control is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlCutPaste] as? Bool == true,
                "panel cut and paste control is visible by default")
+        expect(registeredDefaults[DefaultsKey.colorPickerBareHex] as? Bool == false,
+               "color picker keeps the # prefix by default")
+        expect(registeredDefaults[DefaultsKey.micMuteMenuBarIndicator] as? Bool == true,
+               "mic mute menu bar indicator ships on by default (badge only shows while muted)")
+        expect(registeredDefaults[DefaultsKey.menuBarMetricSpacing] as? String == "compact",
+               "menu bar metric spacing defaults to the compact look")
+        expect(Defaults.sanitizedMonitorAlertCooldown(2) == 2,
+               "the two minute alert cooldown is a valid stored choice")
+        expect(Defaults.sanitizedMonitorAlertCooldown(7) == 15,
+               "unknown alert cooldowns fall back to fifteen minutes")
+        expect(Defaults.sanitizedMenuBarMetricSpacing("standard") == "standard",
+               "standard menu bar spacing is a valid stored choice")
+        expect(Defaults.sanitizedMenuBarMetricSpacing("banana") == "compact",
+               "unknown menu bar spacing values fall back to the compact default")
+        expect(MenuBarSpacingSupport.digitMatchedReserve(for: "14%") == "88%",
+               "compact spacing reserves the current digit count for percentages")
+        expect(MenuBarSpacingSupport.digitMatchedReserve(for: "999°") == "888°",
+               "compact spacing reserves the current digit count for temperatures")
+        expect(MenuBarSpacingSupport.digitMatchedReserve(for: "1.5M") == "8.8M",
+               "compact spacing keeps units and separators while widening digits")
+        expect(MenuBarSpacingSupport.digitMatchedReserve(for: "") == "",
+               "compact spacing reserve of an empty value stays empty")
+        expect(MenuBarSpacingSupport.digitMatchedReserve(for: "4%", minimumDigits: 2) == "88%",
+               "compact spacing pads single digits up to the stability floor")
+        expect(MenuBarSpacingSupport.digitMatchedReserve(for: "14%", minimumDigits: 2) == "88%",
+               "a one and a two digit value reserve the same width, so 4% to 10% never moves the bar")
+        expect(MenuBarSpacingSupport.digitMatchedReserve(for: "100%", minimumDigits: 2) == "888%",
+               "values above the floor keep their own digit count")
+        expect(MenuBarSpacingSupport.compactFloor(currentDigits: 1, highWater: nil) == 2,
+               "the compact floor starts at two digits")
+        expect(MenuBarSpacingSupport.compactFloor(currentDigits: 3, highWater: 2) == 3,
+               "a three digit value raises the floor")
+        expect(MenuBarSpacingSupport.compactFloor(currentDigits: 2, highWater: 3) == 3,
+               "the session high-water mark keeps a block from shrinking back and wobbling")
+        expect(MenuBarSpacingSupport.blockGlue(readableStyle: false, spacing: .standard) == " ",
+               "standard dense spacing keeps the full space between blocks")
+        expect(MenuBarSpacingSupport.blockGlue(readableStyle: false, spacing: .compact) == "\u{200A}",
+               "compact dense spacing joins blocks with a hair space")
+        expect(MenuBarSpacingSupport.blockGlue(readableStyle: true, spacing: .compact) == " ",
+               "compact readable spacing tightens the double space to a single one")
+        expect(registeredDefaults[DefaultsKey.menuBarHideIconWithMetrics] as? Bool == false,
+               "the menu bar icon stays visible by default")
+        expect(MenuBarSpacingSupport.shouldHideStatusIcon(optionEnabled: true, separateMetrics: false,
+                                                          metricsEnabled: true, renderedTitleLength: 12,
+                                                          mustShowForSignal: false),
+               "the glyph hides when metrics render in the title and the option is on")
+        expect(!MenuBarSpacingSupport.shouldHideStatusIcon(optionEnabled: false, separateMetrics: false,
+                                                           metricsEnabled: true, renderedTitleLength: 12,
+                                                           mustShowForSignal: false),
+               "the glyph never hides while the option is off")
+        expect(!MenuBarSpacingSupport.shouldHideStatusIcon(optionEnabled: true, separateMetrics: false,
+                                                           metricsEnabled: true, renderedTitleLength: 0,
+                                                           mustShowForSignal: false),
+               "an empty rendered title keeps the glyph, so the item can never turn invisible")
+        expect(!MenuBarSpacingSupport.shouldHideStatusIcon(optionEnabled: true, separateMetrics: false,
+                                                           metricsEnabled: false, renderedTitleLength: 6,
+                                                           mustShowForSignal: false),
+               "a countdown-only title keeps the glyph when no metric is enabled")
+        expect(!MenuBarSpacingSupport.shouldHideStatusIcon(optionEnabled: true, separateMetrics: true,
+                                                           metricsEnabled: true, renderedTitleLength: 6,
+                                                           mustShowForSignal: false),
+               "separate metric items keep the glyph in the otherwise empty main item")
+        expect(!MenuBarSpacingSupport.shouldHideStatusIcon(optionEnabled: true, separateMetrics: false,
+                                                           metricsEnabled: true, renderedTitleLength: 12,
+                                                           mustShowForSignal: true),
+               "an available update or muted mic brings the glyph back to carry the signal")
+        expect(MenuBarSpacingSupport.shouldHideMainStatusItem(optionEnabled: true, separateMetrics: true,
+                                                              metricItemsShown: 2, renderedTitleLength: 0,
+                                                              mustShowForSignal: false),
+               "with separate metric items installed the whole main item may step aside")
+        expect(!MenuBarSpacingSupport.shouldHideMainStatusItem(optionEnabled: true, separateMetrics: true,
+                                                               metricItemsShown: 0, renderedTitleLength: 0,
+                                                               mustShowForSignal: false),
+               "no installed metric items keep the main item, so the app never vanishes")
+        expect(!MenuBarSpacingSupport.shouldHideMainStatusItem(optionEnabled: true, separateMetrics: true,
+                                                               metricItemsShown: 2, renderedTitleLength: 5,
+                                                               mustShowForSignal: false),
+               "an active countdown renders in the main item and keeps it visible")
+        expect(!MenuBarSpacingSupport.shouldHideMainStatusItem(optionEnabled: true, separateMetrics: false,
+                                                               metricItemsShown: 2, renderedTitleLength: 0,
+                                                               mustShowForSignal: false),
+               "the whole-item hiding only applies to the separate-items mode")
+        expect(!MenuBarSpacingSupport.shouldHideMainStatusItem(optionEnabled: true, separateMetrics: true,
+                                                               metricItemsShown: 2, renderedTitleLength: 0,
+                                                               mustShowForSignal: true),
+               "a signal brings the main item back even in the separate-items mode")
         expect(registeredDefaults[DefaultsKey.panelControlAutoQuit] as? Bool == true,
                "panel auto quit control is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlShelf] as? Bool == true,
@@ -970,6 +1091,24 @@ struct MetricsTests {
                == ["uninstaller", "homebrew", "media", "cleanURL", "cleaning"],
                "panel item order keeps saved valid items first and appends defaults")
 
+        // MARK: Window layout shortcut resolution (issue #169)
+
+        expect(WindowLayoutAction.resolvedShortcut(storedValue: nil,
+                                                   defaultShortcut: .windowLayoutLeftDefault)
+               == .windowLayoutLeftDefault,
+               "window layout falls back to the default shortcut when nothing was saved")
+        expect(WindowLayoutAction.resolvedShortcut(storedValue: WindowLayoutAction.clearedShortcutStorageValue,
+                                                   defaultShortcut: .windowLayoutLeftDefault) == nil,
+               "a cleared window layout shortcut resolves to no shortcut at all")
+        expect(WindowLayoutAction.resolvedShortcut(storedValue: "garbage-value",
+                                                   defaultShortcut: .windowLayoutLeftDefault)
+               == .windowLayoutLeftDefault,
+               "a corrupt stored shortcut falls back to the default, never to cleared")
+        expect(WindowLayoutAction.resolvedShortcut(storedValue: GlobalShortcut.windowLayoutRightDefault.storageValue,
+                                                   defaultShortcut: .windowLayoutLeftDefault)
+               == .windowLayoutRightDefault,
+               "a saved window layout shortcut wins over the default")
+
         // MARK: Window layout geometry
 
         let visibleFrame = CGRect(x: 0, y: 40, width: 1440, height: 860)
@@ -1152,6 +1291,13 @@ struct MetricsTests {
                                                  visibleFrame: visibleFrame)
                == CGRect(x: 540, y: 40, width: 900, height: 620),
                "window layout bottom right anchors the accepted app size to both requested edges")
+
+        expect(MediaImageFormat.sanitized("pdf") == .pdf,
+               "Image converter accepts the PDF format")
+        expect(MediaImageFormat.pdf.fileExtension == "pdf",
+               "PDF output uses the pdf file extension")
+        expect(MediaImageFormat.sanitized("bmp") == .jpeg,
+               "Unknown image format falls back to JPEG")
 
         let trim = MediaSupport.sanitizedTrim(start: -5, end: 3, assetDuration: 10)
         expect(trim == MediaTrimRange(start: 0, end: 3),
@@ -1361,6 +1507,16 @@ struct MetricsTests {
                "regular apps remain eligible for process-tap audio routing")
         expect(!MixerRoutingSupport.bypassesProcessTap(bundleIdentifier: nil, name: "Zoomable Notes"),
                "unrelated app names are not treated as Zoom")
+        expect(MixerRoutingSupport.bypassesProcessTap(bundleIdentifier: "com.apple.logic10", name: "Logic Pro"),
+               "Logic Pro is kept out of process-tap audio routing")
+        expect(MixerRoutingSupport.bypassesProcessTap(bundleIdentifier: "com.ableton.live", name: "Live"),
+               "Ableton Live is kept out of process-tap audio routing")
+        expect(MixerRoutingSupport.bypassesProcessTap(bundleIdentifier: "com.steinberg.cubase13", name: "Cubase"),
+               "Cubase is kept out of process-tap audio routing")
+        expect(MixerRoutingSupport.bypassesProcessTap(bundleIdentifier: "com.presonus.studioone6", name: "Studio One"),
+               "Studio One is kept out of process-tap audio routing")
+        expect(!MixerRoutingSupport.bypassesProcessTap(bundleIdentifier: "com.spotify.client", name: "Spotify"),
+               "music players remain eligible for process-tap audio routing")
         expect(MixerRoutingSupport.effectiveDeviceUID(selectedUID: "ExternalDisplay",
                                                       availableUIDs: ["BuiltInSpeakerDevice"],
                                                       defaultUID: "BuiltInSpeakerDevice") == "BuiltInSpeakerDevice",
@@ -1398,6 +1554,294 @@ struct MetricsTests {
                                                                        selectedUnavailable: true,
                                                                        shouldApplyPreferred: false),
                "missing preferred input falls back visually without deleting preference")
+        expect(MixerRoutingSupport.displayOrderedBefore(name: "Music", id: "com.apple.Music",
+                                                        otherName: "Safari", otherID: "com.apple.Safari"),
+               "mixer rows order by display name")
+        expect(MixerRoutingSupport.displayOrderedBefore(name: "safari", id: "a",
+                                                        otherName: "Safari", otherID: "b")
+                   && !MixerRoutingSupport.displayOrderedBefore(name: "Safari", id: "b",
+                                                                otherName: "safari", otherID: "a"),
+               "mixer rows with equal names order deterministically by id")
+        expect(MixerRoutingSupport.deviceDisplayOrderedBefore(isDefault: true, name: "Zeta", uid: "z",
+                                                              otherIsDefault: false, otherName: "Alpha",
+                                                              otherUID: "a"),
+               "the default device orders before any other device")
+        expect(MixerRoutingSupport.deviceDisplayOrderedBefore(isDefault: false, name: "AirPods Pro", uid: "aa",
+                                                              otherIsDefault: false, otherName: "AirPods Pro",
+                                                              otherUID: "bb")
+                   && !MixerRoutingSupport.deviceDisplayOrderedBefore(isDefault: false, name: "AirPods Pro",
+                                                                      uid: "bb",
+                                                                      otherIsDefault: false,
+                                                                      otherName: "AirPods Pro",
+                                                                      otherUID: "aa"),
+               "identically named devices order deterministically by uid")
+
+        // MARK: Shelf persistence
+
+        let shelfFile = ShelfPersistedItem(id: UUID(), kind: .file, title: "notes.pdf",
+                                           path: "/tmp/notes.pdf")
+        let shelfText = ShelfPersistedItem(id: UUID(), kind: .text, title: "Hello", text: "Hello world")
+        let shelfLink = ShelfPersistedItem(id: UUID(), kind: .link, title: "example.com",
+                                           url: "https://example.com/page")
+        let shelfRoundTrip = [shelfFile, shelfText, shelfLink,
+                              ShelfPersistedItem(id: UUID(), kind: .batch, title: "batch",
+                                                 children: [shelfFile, shelfText])]
+        if let encoded = try? JSONEncoder().encode(shelfRoundTrip),
+           let decoded = try? JSONDecoder().decode([ShelfPersistedItem].self, from: encoded) {
+            expect(decoded == shelfRoundTrip, "shelf items survive an encode and decode round trip")
+        } else {
+            expect(false, "shelf items must encode and decode")
+        }
+
+        expect(ShelfPersistenceSupport.sanitized([shelfFile, shelfText, shelfLink]) { _ in true }
+                   == [shelfFile, shelfText, shelfLink],
+               "healthy shelf items pass sanitizing untouched")
+        expect(ShelfPersistenceSupport.sanitized([shelfFile, shelfText]) { _ in false } == [shelfText],
+               "shelf files that no longer exist are dropped at load")
+        expect(ShelfPersistenceSupport.unmountedVolumeRoot(of: "/Volumes/NAS/docs/a.txt") == "/Volumes/NAS",
+               "files under /Volumes report their volume root")
+        expect(ShelfPersistenceSupport.unmountedVolumeRoot(of: "/Users/me/a.txt") == nil,
+               "boot volume files have no volume root to wait for")
+        expect(ShelfPersistenceSupport.sanitized(
+                   [ShelfPersistedItem(id: UUID(), kind: .text, title: "", text: "  \n ")]) { _ in true }
+                   .isEmpty,
+               "whitespace-only shelf text is dropped at load")
+        expect(ShelfPersistenceSupport.sanitized(
+                   [ShelfPersistedItem(id: UUID(), kind: .link, title: "x", url: "not a url##"),
+                    ShelfPersistedItem(id: UUID(), kind: .link, title: "x", url: "file:///etc/hosts"),
+                    ShelfPersistedItem(id: UUID(), kind: .link, title: "x", url: "relative/path")]) { _ in true }
+                   .isEmpty,
+               "invalid, file and schemeless shelf links are dropped at load")
+        let shelfBatch = ShelfPersistedItem(id: UUID(), kind: .batch, title: "batch",
+                                            children: [shelfFile, shelfText])
+        expect(ShelfPersistenceSupport.sanitized([shelfBatch]) { _ in false } == [shelfText],
+               "a shelf batch left with one child collapses to that child")
+        expect(ShelfPersistenceSupport.sanitized(
+                   [ShelfPersistedItem(id: UUID(), kind: .batch, title: "batch",
+                                       children: [shelfFile])]) { _ in false }
+                   .isEmpty,
+               "a shelf batch left empty is dropped")
+        let oversizedShelf = (0..<(ShelfPersistenceSupport.maxLeaves + 20)).map { index in
+            ShelfPersistedItem(id: UUID(), kind: .text, title: "t\(index)", text: "t\(index)")
+        }
+        expect(ShelfPersistenceSupport.sanitized(oversizedShelf) { _ in true }.count
+                   == ShelfPersistenceSupport.maxLeaves,
+               "shelf restore caps the number of items")
+
+        expect(ClipboardHistoryBatch.listOwnsCopyShortcut(batchCount: 2)
+                   && !ClipboardHistoryBatch.listOwnsCopyShortcut(batchCount: 0),
+               "the list only claims command-C over an explicit selection")
+        expect(ClipboardHistoryBatch.listOwnsSelectAllShortcut(batchCount: 0, queryIsEmpty: true)
+                   && !ClipboardHistoryBatch.listOwnsSelectAllShortcut(batchCount: 0, queryIsEmpty: false)
+                   && ClipboardHistoryBatch.listOwnsSelectAllShortcut(batchCount: 1, queryIsEmpty: false),
+               "the list claims command-A over a selection or an empty search field")
+
+        // MARK: Middle click tap (issue #161)
+
+        expect(Defaults.sanitizedMiddleClickTapFingers(3) == 3
+                   && Defaults.sanitizedMiddleClickTapFingers(4) == 4,
+               "tap to middle click accepts three or four fingers")
+        expect(Defaults.sanitizedMiddleClickTapFingers(0) == 0
+                   && Defaults.sanitizedMiddleClickTapFingers(2) == 0
+                   && Defaults.sanitizedMiddleClickTapFingers(-1) == 0,
+               "any other tap finger count means off")
+        expect(MiddleClickSupport.tapShouldFire(duration: 0.15, maxMovement: 0.01, maxSpreadChange: 0.01,
+                                                exceededFingerCount: false, buttonPressedDuring: false,
+                                                positionUnavailable: false, systemDragGestureEnabled: false,
+                                                tapFingers: 3),
+               "a quick still three-finger tap fires")
+        expect(!MiddleClickSupport.tapShouldFire(duration: 0.15, maxMovement: 0.2, maxSpreadChange: 0.01,
+                                                 exceededFingerCount: false, buttonPressedDuring: false,
+                                                 positionUnavailable: false, systemDragGestureEnabled: false,
+                                                 tapFingers: 3),
+               "a swipe never fires the tap")
+        expect(!MiddleClickSupport.tapShouldFire(duration: 0.8, maxMovement: 0.01, maxSpreadChange: 0.01,
+                                                 exceededFingerCount: false, buttonPressedDuring: false,
+                                                 positionUnavailable: false, systemDragGestureEnabled: false,
+                                                 tapFingers: 3),
+               "resting fingers never fire the tap")
+        expect(!MiddleClickSupport.tapShouldFire(duration: 0.15, maxMovement: 0.01, maxSpreadChange: 0.01,
+                                                 exceededFingerCount: false, buttonPressedDuring: true,
+                                                 positionUnavailable: false, systemDragGestureEnabled: false,
+                                                 tapFingers: 3),
+               "a physical click during the touch belongs to the press path")
+        expect(!MiddleClickSupport.tapShouldFire(duration: 0.15, maxMovement: 0.01, maxSpreadChange: 0.01,
+                                                 exceededFingerCount: true, buttonPressedDuring: false,
+                                                 positionUnavailable: false, systemDragGestureEnabled: false,
+                                                 tapFingers: 3),
+               "extra fingers cancel the tap")
+        expect(!MiddleClickSupport.tapShouldFire(duration: 0.15, maxMovement: 0.01, maxSpreadChange: 0.01,
+                                                 exceededFingerCount: false, buttonPressedDuring: false,
+                                                 positionUnavailable: true, systemDragGestureEnabled: false,
+                                                 tapFingers: 3),
+               "unreadable touch positions stand the tap down")
+        expect(!MiddleClickSupport.tapShouldFire(duration: 0.15, maxMovement: 0.01, maxSpreadChange: 0.01,
+                                                 exceededFingerCount: false, buttonPressedDuring: false,
+                                                 positionUnavailable: false, systemDragGestureEnabled: true,
+                                                 tapFingers: 3),
+               "three-finger tap stands down while the system drag gesture owns it")
+        expect(MiddleClickSupport.tapShouldFire(duration: 0.15, maxMovement: 0.01, maxSpreadChange: 0.01,
+                                                exceededFingerCount: false, buttonPressedDuring: false,
+                                                positionUnavailable: false, systemDragGestureEnabled: true,
+                                                tapFingers: 4),
+               "four-finger tap stays available alongside the system drag gesture")
+        expect(!MiddleClickSupport.tapShouldFire(duration: 0.15, maxMovement: 0.01, maxSpreadChange: 0.2,
+                                                 exceededFingerCount: false, buttonPressedDuring: false,
+                                                 positionUnavailable: false, systemDragGestureEnabled: false,
+                                                 tapFingers: 4),
+               "a pinch or spread never fires the tap even with a still centroid")
+
+        // MARK: Cut and paste move progress (issue #168)
+
+        expect(!CutPasteProgressSupport.isCrossVolume(source: NSNumber(value: 1),
+                                                      destination: NSNumber(value: 1)),
+               "a move inside one volume never shows progress")
+        expect(CutPasteProgressSupport.isCrossVolume(source: NSNumber(value: 1),
+                                                     destination: NSNumber(value: 2)),
+               "a move between volumes is recognized as a real copy")
+        expect(!CutPasteProgressSupport.isCrossVolume(source: nil,
+                                                      destination: NSNumber(value: 2)),
+               "unknown volume identities fall back to the silent same-volume path")
+        expect(CutPasteProgressSupport.fraction(finishedBytes: 0, currentBytes: 0, totalBytes: 0) == nil,
+               "an unknown byte total yields an indeterminate bar, not a broken fraction")
+        expect(CutPasteProgressSupport.fraction(finishedBytes: 50, currentBytes: 25, totalBytes: 150) == 0.5,
+               "progress combines finished files with the growing destination")
+        expect(CutPasteProgressSupport.fraction(finishedBytes: 100, currentBytes: 200, totalBytes: 150) == 1.0,
+               "progress clamps at full when the destination briefly over-reports")
+        expect(CutPasteProgressSupport.fraction(finishedBytes: -5, currentBytes: -5, totalBytes: 100) == 0.0,
+               "negative byte readings clamp to an empty bar")
+        expect(CutPasteProgressSupport.displayPosition(completed: 1, total: 5) == 2,
+               "the counter shows the item currently moving, one past the finished count")
+        expect(CutPasteProgressSupport.displayPosition(completed: 5, total: 5) == 5,
+               "the counter never runs past the batch size")
+
+        // MARK: Update installer helpers
+
+        expect(GlobalShortcutRole.activeRoles(isOn: { _ in false }).isEmpty,
+               "no enabled gates means no active shortcuts")
+        expect(GlobalShortcutRole.activeRoles(isOn: { $0 == DefaultsKey.hotkeyEnabled })
+                   == [.keepAwake],
+               "keep awake activates on its own gate alone")
+        expect(!GlobalShortcutRole.activeRoles(isOn: { $0 == DefaultsKey.clipboardHistoryShortcutEnabled })
+                   .contains(.clipboard),
+               "the clipboard shortcut needs the feature on too")
+        expect(GlobalShortcutRole.activeRoles(isOn: {
+                   $0 == DefaultsKey.clipboardHistoryEnabled
+                       || $0 == DefaultsKey.clipboardHistoryShortcutEnabled
+               }).contains(.clipboard),
+               "the clipboard shortcut activates with both gates on")
+
+        expect(UpdateInstallerSupport.progressStepAdvanced(from: nil, to: 0.004),
+               "the first known download fraction always publishes")
+        expect(!UpdateInstallerSupport.progressStepAdvanced(from: 0.011, to: 0.019),
+               "fractions inside the same percent stay quiet")
+        expect(UpdateInstallerSupport.progressStepAdvanced(from: 0.019, to: 0.021),
+               "crossing into the next percent publishes")
+        expect(!UpdateInstallerSupport.progressStepAdvanced(from: 0.5, to: 0.5),
+               "an unchanged fraction stays quiet")
+
+        expect(SettingsSearchSupport.matches(query: "", title: "Monitor"),
+               "a blank settings search matches everything")
+        expect(SettingsSearchSupport.matches(query: "moni", title: "Monitor"),
+               "settings search is case-insensitive prefix-friendly")
+        expect(SettingsSearchSupport.matches(query: "musica", title: "Música"),
+               "settings search ignores accents")
+        expect(!SettingsSearchSupport.matches(query: "shelf", title: "Monitor"),
+               "settings search filters out non-matches")
+        expect(SettingsSearchSupport.matches(query: "  switcher ", title: "Switcher"),
+               "settings search trims surrounding whitespace")
+        expect(SettingsSearchSupport.filteredIndices(query: "mo",
+                                                     sections: [["Monitor", "Shelf"], ["Mouse"]])
+                   == [[0], [0]],
+               "settings search keeps matching rows per section")
+        expect(SettingsSearchSupport.matches(query: "lid", title: "Energy",
+                                             keywords: ["Keep going with the lid closed"]),
+               "settings search finds a page by an option living inside it")
+        expect(!SettingsSearchSupport.matches(query: "lid", title: "Energy", keywords: []),
+               "without keywords the same query stays a miss")
+
+        expect(UpdateInstallerSupport.shouldForceAdminInstall(afterFailureCode: "fail-copy"),
+               "a copy failure retries through the admin prompt")
+        expect(UpdateInstallerSupport.shouldForceAdminInstall(afterFailureCode: "fail-swap"),
+               "a swap failure retries through the admin prompt")
+        expect(!UpdateInstallerSupport.shouldForceAdminInstall(afterFailureCode: "fail-verify"),
+               "a verification failure is not a permission problem")
+        expect(!UpdateInstallerSupport.shouldForceAdminInstall(afterFailureCode: nil),
+               "no remembered failure means the normal path")
+
+        let hiddenLayout = WindowLayoutAction.hiddenActions(from: "leftHalf, restore,bogus")
+        expect(hiddenLayout == [.leftHalf, .restore],
+               "hidden layout actions parse names and drop unknown ones")
+        expect(WindowLayoutAction.hiddenActionsStorageValue([.restore, .leftHalf])
+                   == "leftHalf,restore",
+               "hidden layout actions serialize sorted for stable storage")
+        expect(WindowLayoutAction.hiddenActions(from: "").isEmpty,
+               "an empty stored value hides nothing")
+
+        expect(MediaSupport.inputMatchesTool(contentType: .jpeg, inputTypes: [.image]),
+               "a JPEG drop fits the image tool")
+        expect(!MediaSupport.inputMatchesTool(contentType: .pdf, inputTypes: [.image]),
+               "a PDF drop does not fit the image tool")
+        expect(!MediaSupport.inputMatchesTool(contentType: nil, inputTypes: [.image]),
+               "an unreadable content type is rejected")
+        expect(MediaSupport.inputMatchesTool(contentType: .quickTimeMovie,
+                                             inputTypes: [.movie, .video]),
+               "a movie drop fits the video tools")
+
+        expect(MediaSupport.outputGrew(originalBytes: 9_000, outputBytes: 12_000),
+               "a larger output earns the grew caption")
+        expect(!MediaSupport.outputGrew(originalBytes: 12_000, outputBytes: 9_000),
+               "a smaller output does not")
+        expect(!MediaSupport.outputGrew(originalBytes: 0, outputBytes: 12_000),
+               "an unknown original size never triggers the grew caption")
+
+        expect(UpdateInstallerSupport.shellSingleQuoted("/Applications/My App.app")
+                   == "'/Applications/My App.app'",
+               "shell quoting wraps paths with spaces")
+        expect(UpdateInstallerSupport.shellSingleQuoted("it's") == "'it'\\''s'",
+               "shell quoting survives embedded single quotes")
+        expect(UpdateInstallerSupport.installFailureCode(fromMarker: "ok\n") == nil,
+               "an ok marker is not a failure")
+        expect(UpdateInstallerSupport.installFailureCode(fromMarker: " fail-verify\n") == "fail-verify",
+               "a fail marker surfaces its step code")
+        expect(UpdateInstallerSupport.installFailureCode(fromMarker: "") == nil,
+               "an empty marker is not a failure")
+        expect(UpdateInstallerSupport.runsFromImmutableLocation(
+                   appPath: "/private/var/folders/ab/xyz/T/AppTranslocation/1F2/d/Vorssaint.app",
+                   volumeIsReadOnly: { _ in false }),
+               "translocated apps are flagged as not updatable in place")
+        expect(UpdateInstallerSupport.runsFromImmutableLocation(appPath: "/Volumes/Vorssaint/Vorssaint.app",
+                                                                volumeIsReadOnly: { _ in true }),
+               "apps on a read-only volume (the DMG) are flagged as not updatable in place")
+        expect(!UpdateInstallerSupport.runsFromImmutableLocation(appPath: "/Volumes/ExternalSSD/Vorssaint.app",
+                                                                 volumeIsReadOnly: { _ in false }),
+               "apps on a writable external volume stay updatable in place")
+        let installerScript = UpdateInstallerSupport.installerScript()
+        for step in ["fail-tempdir", "fail-mount", "fail-no-app-in-dmg",
+                     "fail-copy", "fail-verify", "fail-swap", "note ok"] {
+            expect(installerScript.contains(step),
+                   "installer script reports the \(step) step")
+        }
+        expect(installerScript.contains("spctl --status"),
+               "installer script skips Gatekeeper assessment when the user disabled it")
+        expect(installerScript.contains("chown -R"),
+               "an elevated install hands the bundle back to the user")
+        expect(installerScript.contains("update-old.$PID"),
+               "the swap backup name is unique per run so a stale root-owned one never blocks it")
+        expect(installerScript.contains("launchctl asuser"),
+               "installer script relaunches as the user when running as root")
+        expect(installerScript.contains("$RESULT.progress") && installerScript.contains("finalize"),
+               "installer markers stay in a progress file until the run finishes")
+        let elevated = UpdateInstallerSupport.elevatedInstallCommand(
+            appPath: "/Applications/Vorssaint.app",
+            dmgPath: "/tmp/Vorssaint-update.dmg",
+            pid: 123,
+            resultPath: "/tmp/result",
+            uid: 501)
+        expect(elevated.contains("nohup") && elevated.hasSuffix("&"),
+               "elevated installer detaches so the app can quit")
+        expect(elevated.contains("'/Applications/Vorssaint.app'"),
+               "elevated installer passes the app path quoted for the shell")
 
         // MARK: Dock Preview helpers
 
@@ -1653,6 +2097,21 @@ struct MetricsTests {
                                                  lastTouched: [1: 1, 2: 2, 4: 4],
                                                  limit: 2) == [1, 2],
                "switcher preview cache never evicts entries being refreshed right now")
+        expect(SwitcherSupport.cacheByteBudgetVictims(sizes: [1: 30, 2: 30],
+                                                      active: [],
+                                                      lastTouched: [1: 1, 2: 2],
+                                                      budget: 100).isEmpty,
+               "preview byte budget keeps everything while under budget")
+        expect(SwitcherSupport.cacheByteBudgetVictims(sizes: [1: 60, 2: 60, 3: 60],
+                                                      active: [],
+                                                      lastTouched: [1: 1, 2: 2, 3: 3],
+                                                      budget: 100) == [1, 2],
+               "preview byte budget evicts least recently used entries until the bytes fit")
+        expect(SwitcherSupport.cacheByteBudgetVictims(sizes: [1: 60, 2: 60, 3: 60],
+                                                      active: [1],
+                                                      lastTouched: [1: 1, 2: 2, 3: 3],
+                                                      budget: 100) == [2, 3],
+               "preview byte budget never evicts entries being refreshed right now")
 
         // Sheared alpha mask (rows shift right going down): corner detection
         // must find the parallelogram's extremes so rectification can undo it.
@@ -1722,6 +2181,53 @@ struct MetricsTests {
                                        hasFullscreenWindows: false,
                                        hasModifiers: true) == .passThrough,
                "dock click keeps the Dock's native modifier shortcuts")
+        expect(DockClickSupport.action(appIsFrontmost: true,
+                                       hasUnminimizedWindows: true,
+                                       hasMinimizedWindows: false,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false,
+                                       minimizeEnabled: true,
+                                       cycleWindowsEnabled: true,
+                                       unminimizedWindowCount: 3) == .cycleWindows,
+               "dock click cycles instead of minimizing when both are on and there are windows to cycle")
+        expect(DockClickSupport.action(appIsFrontmost: true,
+                                       hasUnminimizedWindows: true,
+                                       hasMinimizedWindows: false,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false,
+                                       minimizeEnabled: true,
+                                       cycleWindowsEnabled: true,
+                                       unminimizedWindowCount: 1) == .minimize,
+               "dock click still minimizes a single-window app with cycling on")
+        expect(DockClickSupport.action(appIsFrontmost: true,
+                                       hasUnminimizedWindows: true,
+                                       hasMinimizedWindows: false,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false,
+                                       minimizeEnabled: false,
+                                       cycleWindowsEnabled: true,
+                                       unminimizedWindowCount: 1) == .passThrough,
+               "cycling alone never minimizes a single-window app")
+        expect(DockClickSupport.action(appIsFrontmost: true,
+                                       hasUnminimizedWindows: false,
+                                       hasMinimizedWindows: true,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false,
+                                       minimizeEnabled: false,
+                                       cycleWindowsEnabled: true,
+                                       unminimizedWindowCount: 0) == .passThrough,
+               "cycling alone never restores minimized windows")
+        expect(DockClickSupport.action(appIsFrontmost: false,
+                                       hasUnminimizedWindows: true,
+                                       hasMinimizedWindows: false,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false,
+                                       minimizeEnabled: false,
+                                       cycleWindowsEnabled: true,
+                                       unminimizedWindowCount: 3) == .passThrough,
+               "cycling lets the Dock activate apps that are not frontmost")
+        expect(DockClickSupport.repeatDecision(lastAction: .cycleWindows, elapsed: 0.5) == .deriveFromState,
+               "a repeated click after a cycle keeps cycling from live state")
 
         expect(DockClickSupport.repeatDecision(lastAction: nil, elapsed: nil) == .deriveFromState,
                "dock click derives the first click from window state")
@@ -1819,6 +2325,12 @@ struct MetricsTests {
                     "color picker clamps extended-gamut components")
         expect(ColorCopyFormat.sanitized("banana") == .hex,
                "color picker falls back to hex for unknown stored formats")
+        expectEqual(QuickToolsSupport.colorString(red: 1, green: 0, blue: 0, format: .hex, bareHex: true),
+                    "FF0000",
+                    "color picker drops the leading # when the bare hex option is on")
+        expectEqual(QuickToolsSupport.colorString(red: 0.2, green: 0.4, blue: 0.6, format: .rgb, bareHex: true),
+                    "rgb(51, 102, 153)",
+                    "bare hex option leaves the other copy formats untouched")
 
         let ocrLines = [
             QuickToolsSupport.RecognizedLine(text: "world", x: 0.5, y: 0.8),

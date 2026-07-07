@@ -130,9 +130,9 @@ struct ClipboardQuickPanelView: View {
     private var shortcutGuide: some View {
         HStack(spacing: 6) {
             shortcutBadge(key: text.clickRowShortcut, action: l10n.s.menuPaste)
-            shortcutBadge(key: text.commandClickShortcut, action: text.copy)
+            shortcutBadge(key: text.commandClickShortcut, action: text.selectShortcutAction)
             shortcutBadge(key: "Enter", action: l10n.s.menuPaste)
-            shortcutBadge(key: "Shift Enter", action: text.copy)
+            shortcutBadge(key: "⌘C", action: text.copy)
         }
     }
 
@@ -171,21 +171,16 @@ struct ClipboardQuickPanelView: View {
                           isBatchSelected: Bool,
                           isHovered: Bool) -> some View {
         HStack(alignment: .top, spacing: 9) {
-            if entry.kind == .text {
-                Button {
-                    history.toggleQuickBatchSelection(entry)
-                } label: {
-                    leadingMarker(entry: entry,
-                                  shortcutIndex: shortcutIndex,
-                                  isBatchSelected: isBatchSelected)
-                }
-                .buttonStyle(.plain)
-                .help(isBatchSelected ? text.unselectMultiple : text.selectMultiple)
-            } else {
+            Button {
+                history.toggleQuickBatchSelection(entry)
+            } label: {
                 leadingMarker(entry: entry,
                               shortcutIndex: shortcutIndex,
-                              isBatchSelected: false)
+                              isBatchSelected: isBatchSelected,
+                              isHovered: isHovered)
             }
+            .buttonStyle(.plain)
+            .help(isBatchSelected ? text.unselectMultiple : text.selectMultiple)
 
             VStack(alignment: .leading, spacing: 5) {
                 entryContent(entry)
@@ -271,8 +266,17 @@ struct ClipboardQuickPanelView: View {
             }
         }
         .onTapGesture {
-            if NSEvent.modifierFlags.intersection([.command]).contains(.command) {
-                history.copyOnlyQuickEntry(entry)
+            // Finder muscle memory: ⌘-click and ⇧-click build a selection.
+            // A plain click pastes; on a selected row it pastes the whole
+            // selection. Copying without pasting lives in ⌘C, the blue
+            // button and the footer.
+            let modifiers = NSEvent.modifierFlags.intersection([.command, .shift])
+            if modifiers.contains(.command) {
+                history.toggleQuickBatchSelection(entry)
+            } else if modifiers.contains(.shift) {
+                history.extendQuickBatchSelection(to: entry)
+            } else if history.isQuickBatchSelected(entry) {
+                history.copySelectedQuickEntry()
             } else {
                 history.copyQuickEntry(entry)
             }
@@ -356,7 +360,8 @@ struct ClipboardQuickPanelView: View {
     @ViewBuilder
     private func leadingMarker(entry: ClipboardHistoryEntry,
                                shortcutIndex: Int?,
-                               isBatchSelected: Bool) -> some View {
+                               isBatchSelected: Bool,
+                               isHovered: Bool) -> some View {
         if isBatchSelected {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 14, weight: .semibold))
@@ -365,6 +370,17 @@ struct ClipboardQuickPanelView: View {
                 .background(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .fill(Color.accentColor.opacity(0.12))
+                )
+        } else if isHovered {
+            // An empty checkbox on hover, so the multi-select is visible
+            // before anyone knows about ⌘-click.
+            Image(systemName: "circle")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.accentColor.opacity(0.65))
+                .frame(width: 32, height: 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.07))
                 )
         } else if let shortcutIndex {
             Text("⌘\(shortcutIndex + 1)")
@@ -405,21 +421,28 @@ struct ClipboardQuickPanelView: View {
     private var footer: some View {
         HStack(spacing: 8) {
             if history.quickBatchCount > 0 {
-                Text(String(format: text.selectedCountFormat, history.quickBatchCount))
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
+                // The selection's actions, spelled out: the visible twin of
+                // Enter and ⌘C, so the flow needs no shortcut knowledge.
+                Button(String(format: text.pasteSelectedFormat, history.quickBatchCount)) {
+                    history.copySelectedQuickEntry()
+                }
+                .buttonStyle(.borderedProminent)
+                Button(String(format: text.copySelectedFormat, history.quickBatchCount)) {
+                    history.copySelectedQuickEntryOnly()
+                }
                 Button(text.clearSelection) {
                     history.clearQuickBatchSelection()
                 }
+            } else {
+                Button(text.clearRecent) {
+                    history.clearRecent()
+                }
+                .disabled(history.recentEntries.isEmpty)
+                Button(text.clearAll) {
+                    history.clearAll()
+                }
+                .disabled(history.recentEntries.isEmpty)
             }
-            Button(text.clearRecent) {
-                history.clearRecent()
-            }
-            .disabled(history.recentEntries.isEmpty)
-            Button(text.clearAll) {
-                history.clearAll()
-            }
-            .disabled(history.recentEntries.isEmpty)
             Spacer()
             Text("\(history.entries.count)")
                 .font(.system(size: 10.5, weight: .medium))

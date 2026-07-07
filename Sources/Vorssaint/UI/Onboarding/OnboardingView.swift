@@ -11,8 +11,13 @@ enum OnboardingMode {
     case full
 
     var steps: [OnboardingStep] {
+        // Ten pages on purpose: setup and permissions first, the quick panel
+        // right after the panel pages (it is the app's fastest entry point),
+        // and one single page that turns the optional features on. The old
+        // per-feature showcase pages moved into that page as plain toggles;
+        // each feature's Settings page still teaches the details.
         [.welcome, .accessibility, .screenRecording, .monitor, .menuBarSetup,
-         .panelSetup, .panelNavigation, .optionalFeatures, .cutPaste, .autoQuit, .uninstaller, .shelf,
+         .panelSetup, .quickPanel, .optionalFeatures,
          .status, .done]
     }
 
@@ -23,7 +28,7 @@ enum OnboardingMode {
 
 enum OnboardingStep {
     case welcome, accessibility, screenRecording, monitor, menuBarSetup, panelSetup, optionalFeatures
-    case panelNavigation, cutPaste, autoQuit, uninstaller, shelf
+    case quickPanel
     case status, done
 }
 
@@ -42,8 +47,14 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            // Scrollable so a step taller than the window (the menu bar
+            // metrics list outgrew it, issue #176) can never push the
+            // navigation bar out of the fixed frame — without a scroll, the
+            // footer was clipped away and the flow looked stuck.
+            ScrollView {
+                content
+                    .frame(maxWidth: .infinity, alignment: .top)
+            }
 
             Divider()
             navigationBar
@@ -71,12 +82,8 @@ struct OnboardingView: View {
         case .monitor: MonitorStep()
         case .menuBarSetup: MenuBarSetupStep()
         case .panelSetup: PanelSetupStep()
-        case .panelNavigation: PanelNavigationStep()
+        case .quickPanel: QuickPanelShowcaseStep()
         case .optionalFeatures: OptionalFeaturesStep()
-        case .cutPaste: CutPasteShowcaseStep()
-        case .autoQuit: AutoQuitShowcaseStep()
-        case .uninstaller: UninstallerShowcaseStep()
-        case .shelf: ShelfShowcaseStep()
         case .status: StatusStep()
         case .done: DoneStep()
         }
@@ -379,58 +386,6 @@ private struct PanelSetupStep: View {
     }
 }
 
-// MARK: - Panel navigation setup
-
-private struct PanelNavigationStep: View {
-    @ObservedObject private var l10n = L10n.shared
-    @AppStorage(DefaultsKey.panelNavigationEnabled) private var enabled = true
-
-    var body: some View {
-        VStack(spacing: 18) {
-            StepHeader(icon: "square.grid.2x2",
-                       title: l10n.s.obStepPanelNavigationTitle,
-                       subtitle: l10n.s.obStepPanelNavigationBody)
-
-            VStack(spacing: 0) {
-                HStack(spacing: 10) {
-                    Image(systemName: "moon.zzz.fill")
-                    Image(systemName: "slider.horizontal.3")
-                    Image(systemName: "cpu")
-                    Image(systemName: "network")
-                    Image(systemName: "bolt.fill")
-                    Image(systemName: "wrench.and.screwdriver.fill")
-                }
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-
-                Divider()
-
-                Toggle(l10n.s.panelNavigationMode, isOn: $enabled)
-                    .toggleStyle(.switch)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-
-                Text(l10n.s.panelNavigationCaption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 14)
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.primary.opacity(0.05))
-            )
-            .padding(.horizontal, 28)
-
-            Spacer()
-        }
-    }
-}
-
 // MARK: - Step 5: optional features
 
 private struct OptionalFeaturesStep: View {
@@ -438,6 +393,9 @@ private struct OptionalFeaturesStep: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage(DefaultsKey.scrollInverterEnabled) private var inverterEnabled = false
     @AppStorage(DefaultsKey.switcherEnabled) private var switcherEnabled = true
+    @AppStorage(DefaultsKey.finderCutPasteEnabled) private var cutPasteEnabled = false
+    @AppStorage(DefaultsKey.autoQuitEnabled) private var autoQuitEnabled = false
+    @AppStorage(DefaultsKey.shelfEnabled) private var shelfEnabled = false
 
     var body: some View {
         VStack(spacing: 18) {
@@ -482,6 +440,42 @@ private struct OptionalFeaturesStep: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Toggle(l10n.s.cutPasteEnable, isOn: $cutPasteEnabled)
+                        .onChange(of: cutPasteEnabled) { _, _ in
+                            FinderCutPaste.shared.syncWithPreferences()
+                        }
+                    Text(l10n.s.cutPasteEnableCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Toggle(l10n.s.autoQuitEnable, isOn: $autoQuitEnabled)
+                        .onChange(of: autoQuitEnabled) { _, _ in
+                            AutoQuitService.shared.syncWithPreferences()
+                        }
+                    Text(l10n.s.autoQuitEnableCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Toggle(l10n.s.shelfEnable, isOn: $shelfEnabled)
+                        .onChange(of: shelfEnabled) { _, _ in
+                            ShelfService.shared.syncWithPreferences()
+                        }
+                    Text(l10n.s.shelfEnableCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(16)
             .background(
@@ -502,6 +496,8 @@ private struct StatusStep: View {
     @ObservedObject private var permissions = Permissions.shared
     @AppStorage(DefaultsKey.scrollInverterEnabled) private var inverterEnabled = false
     @AppStorage(DefaultsKey.switcherEnabled) private var switcherEnabled = true
+    @AppStorage(DefaultsKey.finderCutPasteEnabled) private var cutPasteEnabled = false
+    @AppStorage(DefaultsKey.autoQuitEnabled) private var autoQuitEnabled = false
 
     var body: some View {
         VStack(spacing: 18) {
@@ -511,7 +507,10 @@ private struct StatusStep: View {
 
             VStack(spacing: 0) {
                 statusRow(name: l10n.s.permissionAccessibility,
-                          needed: inverterEnabled || switcherEnabled,
+                          // Cut and paste and quit on close moved into the
+                          // optional-features page; both need accessibility.
+                          needed: inverterEnabled || switcherEnabled
+                              || cutPasteEnabled || autoQuitEnabled,
                           granted: permissions.accessibility)
                 Divider().padding(.vertical, 8)
                 statusRow(name: l10n.s.permissionScreenRecording,

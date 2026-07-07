@@ -28,6 +28,8 @@ final class AudioInputDeviceManager: ObservableObject {
 
     private var listenerInstalled = false
     private var applyingPreferred = false
+    private var refreshPending = false
+    private var lastListenerRefreshAt: CFAbsoluteTime = 0
 
     private init() {}
 
@@ -59,9 +61,34 @@ final class AudioInputDeviceManager: ObservableObject {
                                                  mScope: kAudioObjectPropertyScopeGlobal,
                                                  mElement: kAudioObjectPropertyElementMain)
         AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, .main) { [weak self] _, _ in
-            self?.refreshAndApply()
+            self?.scheduleListenerRefresh()
         }
     }
+
+    /// Same coalescing as AppVolumeMixer.scheduleListenerRefresh: one hardware
+    /// event fires both listeners back-to-back, and a busy audio HAL keeps the
+    /// stream going. Isolated notifications refresh immediately; bursts fold
+    /// into a single trailing refresh.
+    private func scheduleListenerRefresh() {
+        guard !refreshPending else { return }
+        let now = CFAbsoluteTimeGetCurrent()
+        let elapsed = now - lastListenerRefreshAt
+        if elapsed >= Self.listenerRefreshInterval {
+            lastListenerRefreshAt = now
+            refreshAndApply()
+            return
+        }
+        refreshPending = true
+        let delay = Self.listenerRefreshInterval - elapsed
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else { return }
+            self.refreshPending = false
+            self.lastListenerRefreshAt = CFAbsoluteTimeGetCurrent()
+            self.refreshAndApply()
+        }
+    }
+
+    private static let listenerRefreshInterval: CFAbsoluteTime = 0.2
 
     private func refreshAndApply() {
         let savedUID = Defaults.sanitizedPreferredInputDeviceUID(
@@ -73,11 +100,25 @@ final class AudioInputDeviceManager: ObservableObject {
                                                                 availableUIDs: availableUIDs,
                                                                 currentUID: currentUID)
 
-        preferredInputDeviceUID = savedUID
-        currentInputDeviceUID = currentUID
-        effectiveInputDeviceUID = resolution.effectiveUID
-        preferredUnavailable = resolution.selectedUnavailable
-        inputDevices = devices
+        // Publish only real changes: refreshes run on every CoreAudio
+        // notification, and assigning a @Published property signals SwiftUI
+        // even when the value is identical — a chatty HAL would otherwise
+        // re-render the mixer panel continuously.
+        if preferredInputDeviceUID != savedUID {
+            preferredInputDeviceUID = savedUID
+        }
+        if currentInputDeviceUID != currentUID {
+            currentInputDeviceUID = currentUID
+        }
+        if effectiveInputDeviceUID != resolution.effectiveUID {
+            effectiveInputDeviceUID = resolution.effectiveUID
+        }
+        if preferredUnavailable != resolution.selectedUnavailable {
+            preferredUnavailable = resolution.selectedUnavailable
+        }
+        if inputDevices != devices {
+            inputDevices = devices
+        }
 
         guard resolution.shouldApplyPreferred,
               !applyingPreferred,
@@ -101,19 +142,31 @@ final class AudioInputDeviceManager: ObservableObject {
                                                 UInt32(MemoryLayout<AudioObjectID>.size),
                                                 &nextDeviceID)
         guard status == noErr else {
-            lastError = "OSStatus \(status)"
+            let message = "OSStatus \(status)"
+            if lastError != message {
+                lastError = message
+            }
             return
         }
 
-        lastError = nil
-        currentInputDeviceUID = device.uid
-        effectiveInputDeviceUID = device.uid
-        inputDevices = inputDevices.map {
+        if lastError != nil {
+            lastError = nil
+        }
+        if currentInputDeviceUID != device.uid {
+            currentInputDeviceUID = device.uid
+        }
+        if effectiveInputDeviceUID != device.uid {
+            effectiveInputDeviceUID = device.uid
+        }
+        let updated = inputDevices.map {
             MixerInputDevice(id: $0.id,
                              uid: $0.uid,
                              name: $0.name,
                              isDefault: $0.uid == device.uid,
                              audioObjectID: $0.audioObjectID)
+        }
+        if inputDevices != updated {
+            inputDevices = updated
         }
     }
 
@@ -168,8 +221,9 @@ final class AudioInputDeviceManager: ObservableObject {
         }
 
         return devices.sorted { lhs, rhs in
-            if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
-            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            MixerRoutingSupport.deviceDisplayOrderedBefore(
+                isDefault: lhs.isDefault, name: lhs.name, uid: lhs.uid,
+                otherIsDefault: rhs.isDefault, otherName: rhs.name, otherUID: rhs.uid)
         }
     }
 

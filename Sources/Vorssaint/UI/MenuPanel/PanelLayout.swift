@@ -366,6 +366,7 @@ struct PanelInlineHideButton: View {
         }
         .buttonStyle(.plain)
         .help(isVisible ? l10n.s.panelHideItem : l10n.s.panelShowItem)
+        .accessibilityLabel(isVisible ? l10n.s.panelHideItem : l10n.s.panelShowItem)
     }
 }
 

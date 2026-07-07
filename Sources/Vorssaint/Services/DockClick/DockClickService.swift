@@ -33,8 +33,9 @@ final class DockClickService {
     private init() {}
 
     func syncWithPreferences() {
-        let enabled = UserDefaults.standard.bool(forKey: DefaultsKey.dockClickMinimize)
-        if enabled, Permissions.shared.accessibility {
+        let minimizeEnabled = UserDefaults.standard.bool(forKey: DefaultsKey.dockClickMinimize)
+        let cycleEnabled = UserDefaults.standard.bool(forKey: DefaultsKey.dockClickCycleWindows)
+        if (minimizeEnabled || cycleEnabled), Permissions.shared.accessibility {
             start()
         } else {
             stop()
@@ -136,6 +137,8 @@ final class DockClickService {
         let windows = Self.standardWindows(pid: pid)
         guard !windows.hasFullscreen else { return Unmanaged.passUnretained(event) }
 
+        let cycleEnabled = UserDefaults.standard.bool(forKey: DefaultsKey.dockClickCycleWindows)
+        let minimizeEnabled = UserDefaults.standard.bool(forKey: DefaultsKey.dockClickMinimize)
         let action: DockClickAction
         if case .toggle(let toggled) = decision {
             action = toggled
@@ -144,7 +147,10 @@ final class DockClickService {
                                              hasUnminimizedWindows: !windows.unminimized.isEmpty,
                                              hasMinimizedWindows: !windows.minimized.isEmpty,
                                              hasFullscreenWindows: false,
-                                             hasModifiers: false)
+                                             hasModifiers: false,
+                                             minimizeEnabled: minimizeEnabled,
+                                             cycleWindowsEnabled: cycleEnabled,
+                                             unminimizedWindowCount: windows.unminimized.count)
         }
 
         // Swallow handled clicks (or the Dock would fight us: re-activate on
@@ -153,6 +159,14 @@ final class DockClickService {
         // Dock Preview's listen-only tap, so tell it directly — otherwise its
         // open panel keeps a pre-click idea of which windows are minimized.
         switch action {
+        case .cycleWindows:
+            lastAction[pid] = ActionRecord(kind: .cycleWindows, time: now, targets: [])
+            let unminimized = windows.unminimized
+            DispatchQueue.main.async {
+                DockPreviewService.shared.dockClickWasHandled()
+                Self.cycleWindows(pid: pid, windows: unminimized)
+            }
+            return nil
         case .minimize:
             let targets = windows.unminimized
             lastAction[pid] = ActionRecord(kind: .minimize, time: now, targets: targets)
@@ -281,6 +295,55 @@ final class DockClickService {
                 AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, value)
             }
         }
+    }
+
+    /// Cycles through an app's unminimized windows by raising the rearmost one
+    /// to the front, mimicking ⌘` (Command-Tilde) behavior.
+    ///
+    /// The rearmost window comes from the WindowServer's real z-order, not the
+    /// AX windows array: that array keeps the focused window first, so
+    /// "advance from the focused one" degenerates into flipping between the
+    /// two frontmost windows and the rest are never visited. Raising the true
+    /// rearmost window walks every window in round-robin order.
+    private static func cycleWindows(pid: pid_t, windows: [AXUIElement]) {
+        guard windows.count > 1 else { return }
+
+        let rearWindow: AXUIElement
+        if let rear = rearmostByZOrder(pid: pid, windows: windows) {
+            rearWindow = rear
+        } else {
+            // No z-order available (window ids unresolved): the AX array is
+            // focused-first, so its last element is still the best rear guess.
+            rearWindow = windows[windows.count - 1]
+        }
+
+        AXUIElementPerformAction(rearWindow, kAXRaiseAction as CFString)
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetAttributeValue(app, kAXFocusedWindowAttribute as CFString, rearWindow)
+    }
+
+    /// The candidate that sits deepest in the WindowServer's front-to-back
+    /// on-screen list. Windows on other Spaces are not in that list, which is
+    /// wanted: cycling from the Dock must not yank the user across Spaces.
+    private static func rearmostByZOrder(pid: pid_t, windows: [AXUIElement]) -> AXUIElement? {
+        guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
+                                                    kCGNullWindowID) as? [[String: Any]] else { return nil }
+        let orderedIDs = info.compactMap { entry -> CGWindowID? in
+            guard entry[kCGWindowOwnerPID as String] as? pid_t == pid,
+                  entry[kCGWindowLayer as String] as? Int == 0,
+                  let number = entry[kCGWindowNumber as String] as? CGWindowID else { return nil }
+            return number
+        }
+        guard orderedIDs.count > 1 else { return nil }
+        var rear: (window: AXUIElement, depth: Int)?
+        for window in windows {
+            guard let id = AXWindowResolver.windowID(for: window),
+                  let depth = orderedIDs.firstIndex(of: id) else { continue }
+            if rear == nil || depth > rear!.depth {
+                rear = (window, depth)
+            }
+        }
+        return rear?.window
     }
 
     // MARK: - Geometry

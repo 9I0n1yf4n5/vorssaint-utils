@@ -51,7 +51,8 @@ final class ColorSamplerService: ObservableObject {
         let value = QuickToolsSupport.colorString(red: srgb.redComponent,
                                                   green: srgb.greenComponent,
                                                   blue: srgb.blueComponent,
-                                                  format: format)
+                                                  format: format,
+                                                  bareHex: UserDefaults.standard.bool(forKey: DefaultsKey.colorPickerBareHex))
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(value, forType: .string)

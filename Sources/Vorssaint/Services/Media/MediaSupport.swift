@@ -4,6 +4,7 @@
 import CoreGraphics
 import Darwin
 import Foundation
+import UniformTypeIdentifiers
 
 enum MediaTool: String, CaseIterable, Identifiable {
     case videoCompressor, gifMaker, imageCompressor, textExtractor
@@ -12,7 +13,7 @@ enum MediaTool: String, CaseIterable, Identifiable {
 }
 
 enum MediaImageFormat: String, CaseIterable, Identifiable {
-    case jpeg, heic, png
+    case jpeg, heic, png, pdf
 
     var id: String { rawValue }
 
@@ -21,6 +22,7 @@ enum MediaImageFormat: String, CaseIterable, Identifiable {
         case .jpeg: return "jpg"
         case .heic: return "heic"
         case .png: return "png"
+        case .pdf: return "pdf"
         }
     }
 
@@ -136,6 +138,22 @@ enum MediaSupport {
             guard let path else { return }
             _ = chflags(path, visibleFlags)
         }
+    }
+
+    /// Whether a dropped file fits the selected tool, mirroring the open
+    /// panel's filter. Without this, dropping a PDF on the image tool would
+    /// "succeed" by silently rasterizing page one (ImageIO opens PDFs).
+    static func inputMatchesTool(contentType: UTType?, inputTypes: [UTType]) -> Bool {
+        guard let contentType else { return false }
+        return inputTypes.contains { contentType.conforms(to: $0) }
+    }
+
+    /// Whether the result deserves the "came out larger" caption: growth is
+    /// normal (PDF wraps the image, high quality can beat the source) but a
+    /// "compressor" should say so instead of looking broken. Unknown sizes
+    /// (zero) never trigger it.
+    static func outputGrew(originalBytes: Int64, outputBytes: Int64) -> Bool {
+        originalBytes > 0 && outputBytes > originalBytes
     }
 
     static func recognitionLanguages(for languageRawValue: String) -> [String] {

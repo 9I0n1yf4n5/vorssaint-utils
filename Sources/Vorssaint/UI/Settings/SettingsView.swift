@@ -10,7 +10,7 @@ import SwiftUI
 enum SettingsPage: Hashable {
     case general, energy, monitor
     case mouse, switcher, keyDebounce, cutPaste, autoQuit, uninstaller, urlCleaner, homebrew, media, clipboard, windowLayout, shelf, quickTools
-    case advanced, about, releaseNotes, support
+    case shortcuts, advanced, about, releaseNotes, support
 }
 
 /// Selects the visible Settings page; the menu bar uses it to open Settings
@@ -27,47 +27,98 @@ final class SettingsRouter: ObservableObject {
 struct SettingsView: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var router = SettingsRouter.shared
+    @State private var searchQuery = ""
 
     private var categories: SettingsCategoryStrings {
         FeatureStrings.settingsCategories(l10n.language)
     }
 
+    private struct SidebarItem: Identifiable {
+        let page: SettingsPage
+        let title: String
+        let icon: String
+        /// Labels of options living inside the page, so the search finds a
+        /// page by what it contains, in the user's language.
+        var keywords: [String] = []
+        var id: SettingsPage { page }
+    }
+
+    private var sidebarSections: [(title: String, items: [SidebarItem])] {
+        [
+            (categories.essentials, [
+                SidebarItem(page: .general, title: l10n.s.tabGeneral, icon: "gearshape",
+                            keywords: [l10n.s.launchAtLogin, l10n.s.languageLabel, l10n.s.showMenuBarIcon]),
+                SidebarItem(page: .energy, title: l10n.s.tabEnergy, icon: "bolt.fill",
+                            keywords: [l10n.s.keepAwakeTitle, l10n.s.clamshellTitle, l10n.s.defaultDurationLabel]),
+                SidebarItem(page: .monitor, title: l10n.s.tabMonitor, icon: "chart.line.uptrend.xyaxis",
+                            keywords: [l10n.s.menuBarSpacingLabel, l10n.s.menuBarHideIconToggle,
+                                       l10n.s.monitorMemoryPressureDot]),
+            ]),
+            (categories.windowsControls, [
+                SidebarItem(page: .mouse, title: l10n.s.tabMouse, icon: "computermouse",
+                            keywords: [l10n.s.invertMouseScroll, l10n.s.middleClickTapPicker]),
+                SidebarItem(page: .switcher, title: l10n.s.tabSwitcher, icon: "rectangle.on.rectangle",
+                            keywords: [l10n.s.switcherEnable, l10n.s.dockClickMinimize,
+                                       l10n.s.dockClickCycleWindows]),
+                SidebarItem(page: .windowLayout, title: FeatureStrings.windowLayout(l10n.language).title, icon: "rectangle.3.group",
+                            keywords: [l10n.s.dockClickCycleWindows]),
+                SidebarItem(page: .autoQuit, title: l10n.s.autoQuitName, icon: "xmark.rectangle",
+                            keywords: [l10n.s.autoQuitEnable]),
+            ]),
+            (categories.files, [
+                SidebarItem(page: .clipboard, title: FeatureStrings.clipboard(l10n.language).title, icon: "doc.on.clipboard",
+                            keywords: [FeatureStrings.clipboard(l10n.language).limit,
+                                       FeatureStrings.clipboard(l10n.language).skipSensitive]),
+                SidebarItem(page: .cutPaste, title: l10n.s.cutPasteName, icon: "scissors",
+                            keywords: [l10n.s.cutPasteEnable]),
+                SidebarItem(page: .shelf, title: l10n.s.shelfName, icon: "tray.full",
+                            keywords: [l10n.s.shelfEnable]),
+                SidebarItem(page: .media, title: l10n.s.mediaName, icon: "photo.on.rectangle.angled",
+                            keywords: ["PDF", "GIF", l10n.s.mediaStartConvertPDF, l10n.s.ocrName]),
+            ]),
+            (categories.utilities, [
+                SidebarItem(page: .quickTools, title: l10n.s.quickToolsTab, icon: "wand.and.rays",
+                            keywords: [l10n.s.launcherName, l10n.s.colorPickerName,
+                                       l10n.s.micMuteName, l10n.s.ocrName,
+                                       l10n.s.colorPickerBareHexToggle, l10n.s.micMuteMenuBarToggle]),
+                SidebarItem(page: .urlCleaner, title: l10n.s.urlCleanerName, icon: "link"),
+                SidebarItem(page: .homebrew, title: l10n.s.homebrewName, icon: "shippingbox"),
+                SidebarItem(page: .uninstaller, title: l10n.s.uninstallerName, icon: "trash"),
+                SidebarItem(page: .keyDebounce, title: l10n.s.keyDebounceName, icon: "keyboard"),
+            ]),
+            (categories.app, [
+                SidebarItem(page: .shortcuts, title: l10n.s.shortcutsPageTitle, icon: "command",
+                            keywords: [l10n.s.hotkeyToggle]),
+                SidebarItem(page: .advanced, title: l10n.s.tabAdvanced, icon: "wrench.and.screwdriver"),
+                SidebarItem(page: .about, title: l10n.s.tabAbout, icon: "info.circle",
+                            keywords: [l10n.s.reviewIntro]),
+                SidebarItem(page: .releaseNotes, title: l10n.s.tabReleaseNotes, icon: "sparkles"),
+                SidebarItem(page: .support, title: l10n.s.tabSupport, icon: "heart.fill"),
+            ]),
+        ]
+    }
+
     var body: some View {
         NavigationSplitView {
             List(selection: $router.page) {
-                Section(categories.essentials) {
-                    Label(l10n.s.tabGeneral, systemImage: "gearshape").tag(SettingsPage.general)
-                    Label(l10n.s.tabEnergy, systemImage: "bolt.fill").tag(SettingsPage.energy)
-                    Label(l10n.s.tabMonitor, systemImage: "chart.line.uptrend.xyaxis").tag(SettingsPage.monitor)
-                }
-
-                Section(categories.windowsControls) {
-                    Label(l10n.s.tabMouse, systemImage: "computermouse").tag(SettingsPage.mouse)
-                    Label(l10n.s.tabSwitcher, systemImage: "rectangle.on.rectangle").tag(SettingsPage.switcher)
-                    Label(FeatureStrings.windowLayout(l10n.language).title, systemImage: "rectangle.3.group").tag(SettingsPage.windowLayout)
-                    Label(l10n.s.cutPasteName, systemImage: "scissors").tag(SettingsPage.cutPaste)
-                    Label(l10n.s.autoQuitName, systemImage: "xmark.rectangle").tag(SettingsPage.autoQuit)
-                }
-
-                Section(categories.utilities) {
-                    Label(FeatureStrings.clipboard(l10n.language).title, systemImage: "doc.on.clipboard").tag(SettingsPage.clipboard)
-                    Label(l10n.s.quickToolsTab, systemImage: "wand.and.rays").tag(SettingsPage.quickTools)
-                    Label(l10n.s.shelfName, systemImage: "tray.full").tag(SettingsPage.shelf)
-                    Label(l10n.s.uninstallerName, systemImage: "trash").tag(SettingsPage.uninstaller)
-                    Label(l10n.s.urlCleanerName, systemImage: "link").tag(SettingsPage.urlCleaner)
-                    Label(l10n.s.homebrewName, systemImage: "shippingbox").tag(SettingsPage.homebrew)
-                    Label(l10n.s.mediaName, systemImage: "photo.on.rectangle.angled").tag(SettingsPage.media)
-                    Label(l10n.s.keyDebounceName, systemImage: "keyboard").tag(SettingsPage.keyDebounce)
-                }
-
-                Section(categories.app) {
-                    Label(l10n.s.tabAdvanced, systemImage: "wrench.and.screwdriver").tag(SettingsPage.advanced)
-                    Label(l10n.s.tabAbout, systemImage: "info.circle").tag(SettingsPage.about)
-                    Label(l10n.s.tabReleaseNotes, systemImage: "sparkles").tag(SettingsPage.releaseNotes)
-                    Label(l10n.s.tabSupport, systemImage: "heart.fill").tag(SettingsPage.support)
+                ForEach(sidebarSections, id: \.title) { section in
+                    let items = section.items.filter {
+                        SettingsSearchSupport.matches(query: searchQuery, title: $0.title,
+                                                      keywords: $0.keywords)
+                    }
+                    if !items.isEmpty {
+                        Section(section.title) {
+                            ForEach(items) { item in
+                                Label(item.title, systemImage: item.icon).tag(item.page)
+                            }
+                        }
+                    }
                 }
             }
             .listStyle(.sidebar)
+            .searchable(text: $searchQuery,
+                        placement: .sidebar,
+                        prompt: l10n.s.settingsSearchPlaceholder)
             .navigationSplitViewColumnWidth(min: 198, ideal: 210, max: 240)
         } detail: {
             detail
@@ -96,6 +147,7 @@ struct SettingsView: View {
         case .quickTools: QuickToolsSettings()
         case .windowLayout: WindowLayoutSettings()
         case .shelf: ShelfSettings()
+        case .shortcuts: ShortcutsSettings()
         case .advanced: AdvancedSettings()
         case .about: AboutSettings()
         case .releaseNotes: ReleaseNotesSettings()
@@ -113,7 +165,6 @@ struct GeneralSettings: View {
     @State private var loginError: String?
     @AppStorage(DefaultsKey.hotkeyEnabled) private var hotkeyEnabled = true
     @AppStorage(DefaultsKey.showCountdown) private var showCountdown = false
-    @AppStorage(DefaultsKey.panelNavigationEnabled) private var panelNavigationEnabled = true
 
     var body: some View {
         Form {
@@ -149,17 +200,6 @@ struct GeneralSettings: View {
                     appDelegate()?.reshowStatusItem()
                 }
                 Text(l10n.s.showMenuBarIconCaption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Section(l10n.s.monitorPanelSection) {
-                Picker(l10n.s.panelNavigationMode, selection: $panelNavigationEnabled) {
-                    Text(l10n.s.panelFooterSections).tag(true)
-                    Text(l10n.s.panelFooterList).tag(false)
-                }
-                .pickerStyle(.segmented)
-
-                Text(l10n.s.panelNavigationCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -234,8 +274,13 @@ struct UpdatesView: View {
             label(l10n.s.updateUpToDate, system: "checkmark.circle.fill", tint: .green)
         case let .available(version):
             label("\(l10n.s.updateAvailablePrefix) \(version)", system: "arrow.down.circle.fill", tint: .accentColor)
-        case .downloading:
-            label(l10n.s.updateDownloading, system: "arrow.down.circle", tint: .secondary)
+        case let .downloading(progress):
+            if let progress {
+                label("\(l10n.s.updateDownloading) \(Int(progress * 100))%",
+                      system: "arrow.down.circle", tint: .secondary)
+            } else {
+                label(l10n.s.updateDownloading, system: "arrow.down.circle", tint: .secondary)
+            }
         case .installing:
             label(l10n.s.updateInstalling, system: "gearshape.2.fill", tint: .secondary)
         case let .failed(reason):
@@ -361,6 +406,7 @@ struct MouseSettings: View {
     @ObservedObject private var middleClick = MiddleClickService.shared
     @AppStorage(DefaultsKey.scrollInverterEnabled) private var inverterEnabled = false
     @AppStorage(DefaultsKey.middleClickEnabled) private var middleClickEnabled = false
+    @AppStorage(DefaultsKey.middleClickTapFingers) private var middleClickTapFingers = 0
 
     var body: some View {
         Form {
@@ -393,6 +439,19 @@ struct MouseSettings: View {
                 Text(l10n.s.middleClickEnableCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if middleClickEnabled {
+                    Picker(l10n.s.middleClickTapPicker, selection: $middleClickTapFingers) {
+                        Text(l10n.s.middleClickTapOff).tag(0)
+                        Text(l10n.s.middleClickTapThreeFingers).tag(3)
+                        Text(l10n.s.middleClickTapFourFingers).tag(4)
+                    }
+                    .onChange(of: middleClickTapFingers) { _, _ in
+                        MiddleClickService.shared.syncWithPreferences()
+                    }
+                    Text(l10n.s.middleClickTapCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 if middleClickEnabled, middleClick.systemDragGestureConflict {
                     Text(l10n.s.middleClickDragConflict)
                         .font(.caption)
@@ -424,6 +483,7 @@ struct SwitcherSettings: View {
     @AppStorage(DefaultsKey.switcherShowWindowlessFinder) private var switcherShowWindowlessFinder = true
     @AppStorage(DefaultsKey.dockPreviewEnabled) private var dockPreviewEnabled = false
     @AppStorage(DefaultsKey.dockClickMinimize) private var dockClickMinimize = false
+    @AppStorage(DefaultsKey.dockClickCycleWindows) private var dockClickCycleWindows = false
     @AppStorage(DefaultsKey.previewSize) private var previewSize = "normal"
 
     var body: some View {
@@ -486,6 +546,13 @@ struct SwitcherSettings: View {
                         DockClickService.shared.syncWithPreferences()
                     }
                 Text(l10n.s.dockClickMinimizeCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Toggle(l10n.s.dockClickCycleWindows, isOn: $dockClickCycleWindows)
+                    .onChange(of: dockClickCycleWindows) { _, _ in
+                        DockClickService.shared.syncWithPreferences()
+                    }
+                Text(l10n.s.dockClickCycleWindowsCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } header: {

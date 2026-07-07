@@ -11,6 +11,15 @@ struct QuickLauncherView: View {
     @ObservedObject private var micMute = MicMuteService.shared
     @State private var hoveredItem: QuickLauncherItem?
     @State private var draggingItem: QuickLauncherItem?
+    /// Mirrors launcher.editingOptionsItem: the service owns it so Esc can
+    /// close the card before leaving edit mode.
+    private var optionsItem: QuickLauncherItem? { launcher.editingOptionsItem }
+    @AppStorage(DefaultsKey.micMuteMenuBarIndicator) private var micBadgeInMenuBar = false
+    @AppStorage(DefaultsKey.colorPickerFormat) private var colorFormat = "hex"
+    @AppStorage(DefaultsKey.colorPickerBareHex) private var colorBareHex = false
+    @AppStorage(DefaultsKey.defaultDuration) private var defaultDuration = 0
+    @AppStorage(DefaultsKey.clipboardHistoryEnabled) private var clipboardEnabled = false
+    @AppStorage(DefaultsKey.clipboardHistoryLimit) private var clipboardLimit = 50
 
     private var columns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: 10), count: QuickLauncherService.columns)
@@ -25,6 +34,10 @@ struct QuickLauncherView: View {
                 emptyState
             } else {
                 grid
+            }
+            if launcher.activeUtility == nil, launcher.isEditing,
+               let optionsItem, hasQuickOptions(optionsItem) {
+                optionsCard(optionsItem)
             }
             if launcher.activeUtility == nil, launcher.isEditing, !launcher.hiddenItems.isEmpty {
                 hiddenTray
@@ -43,6 +56,20 @@ struct QuickLauncherView: View {
             launcher.refreshPanelLayout()
         }
         .onChange(of: launcher.isEditing) { _, _ in
+            launcher.editingOptionsItem = nil
+            launcher.refreshPanelLayout()
+        }
+        // The options card changes the panel's height, and the panel is sized
+        // by hand (no autoresizing window): recompute after open and close,
+        // and also when rows inside the card appear or disappear (the
+        // clipboard limit picker and the bare-hex toggle are conditional).
+        .onChange(of: launcher.editingOptionsItem) { _, _ in
+            launcher.refreshPanelLayout()
+        }
+        .onChange(of: clipboardEnabled) { _, _ in
+            launcher.refreshPanelLayout()
+        }
+        .onChange(of: colorFormat) { _, _ in
             launcher.refreshPanelLayout()
         }
     }
@@ -81,6 +108,17 @@ struct QuickLauncherView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .accessibilityHidden(true)
                 HStack {
+                    Button {
+                        launcher.hide()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 26, height: 26)
+                    }
+                    .buttonStyle(.plain)
+                    .help(l10n.s.menuClose)
+                    .accessibilityLabel(l10n.s.menuClose)
                     Spacer()
                     if launcher.activeUtility != nil {
                         Button {
@@ -92,6 +130,7 @@ struct QuickLauncherView: View {
                                 .frame(width: 26, height: 26)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(l10n.s.menuClose)
                     } else {
                         Button {
                             withAnimation(.easeOut(duration: 0.15)) {
@@ -105,6 +144,7 @@ struct QuickLauncherView: View {
                         }
                         .buttonStyle(.plain)
                         .help(l10n.s.launcherEditHint)
+                        .accessibilityLabel(l10n.s.menuSettings)
                     }
                 }
             }
@@ -139,7 +179,18 @@ struct QuickLauncherView: View {
         let isHovered = hoveredItem == item
 
         Button {
-            launcher.run(item)
+            if launcher.isEditing {
+                // In edit mode the tile body opens its inline options (when it
+                // has any); a tiny gear badge alone is too small a target and
+                // sits outside the tile's hit area.
+                if hasQuickOptions(item) {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        launcher.editingOptionsItem = optionsItem == item ? nil : item
+                    }
+                }
+            } else {
+                launcher.run(item)
+            }
         } label: {
             VStack(spacing: 7) {
                 ZStack(alignment: .topTrailing) {
@@ -163,11 +214,36 @@ struct QuickLauncherView: View {
                         }
                         .buttonStyle(.plain)
                         .offset(x: 7, y: -7)
-                    } else if isActive(item) {
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 8, height: 8)
-                            .offset(x: 3, y: -3)
+                        .help(l10n.s.panelHideItem)
+                        .accessibilityLabel(l10n.s.panelHideItem)
+                        if hasQuickOptions(item) {
+                            Image(systemName: "gearshape.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.white, optionsItem == item ? Color.accentColor : Color.secondary)
+                                .frame(width: 46, height: 46, alignment: .topLeading)
+                                .offset(x: -7, y: -7)
+                                .help(l10n.s.menuSettings)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    } else {
+                        if isActive(item) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 8, height: 8)
+                                .offset(x: 3, y: -3)
+                        }
+                        // Keys 1-9 activate the first nine tiles; the badge is
+                        // the only hint that shortcut exists.
+                        if let index, index < 9 {
+                            Image(systemName: "\(index + 1).circle.fill")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.white, isSelected ? Color.accentColor : Color.secondary.opacity(0.8))
+                                .frame(width: 46, height: 46, alignment: .topLeading)
+                                .offset(x: -6, y: -6)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
                     }
                 }
                 Text(title(for: item))
@@ -193,6 +269,7 @@ struct QuickLauncherView: View {
             .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title(for: item))
         .onHover { hovering in
             hoveredItem = hovering ? item : (hoveredItem == item ? nil : hoveredItem)
             if hovering, !launcher.isEditing {
@@ -229,9 +306,10 @@ struct QuickLauncherView: View {
     }
 
     private var emptyState: some View {
-        Text(l10n.s.launcherEditHint)
+        Text(l10n.s.launcherEmptyState)
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 26)
     }
@@ -249,6 +327,95 @@ struct QuickLauncherView: View {
                 .font(.system(size: 9, weight: .semibold, design: .rounded))
                 .foregroundStyle(.tertiary)
         }
+    }
+
+    // MARK: - Inline options (edit mode)
+
+    /// Tools whose closest settings are worth flipping right here, without a
+    /// trip to the Settings window. Curated on purpose: only options that
+    /// change what the tile itself does.
+    private func hasQuickOptions(_ item: QuickLauncherItem) -> Bool {
+        switch item {
+        case .keepAwake, .micMute, .colorPicker, .clipboard: return true
+        default: return false
+        }
+    }
+
+    /// Inline card under the grid while a gear is open. A card instead of a
+    /// popover on purpose: popovers never present from this borderless
+    /// non-activating panel, and the card keeps the whole flow inside the HUD.
+    private func optionsCard(_ item: QuickLauncherItem) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label(title(for: item), systemImage: icon(for: item))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    withAnimation(.easeOut(duration: 0.15)) { launcher.editingOptionsItem = nil }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(l10n.s.menuClose)
+            }
+            switch item {
+            case .keepAwake:
+                // Same guard as the panel's Keep awake card: enabling the
+                // closed-lid rule can run an admin setup step, and flipping
+                // the switch again mid-setup would race it.
+                Toggle(l10n.s.clamshellTitle, isOn: $keepAwake.clamshellPreferred)
+                    .disabled(keepAwake.clamshellSetupInProgress)
+                Picker(l10n.s.defaultDurationLabel, selection: $defaultDuration) {
+                    Text(l10n.s.minutes15).tag(15)
+                    Text(l10n.s.minutes30).tag(30)
+                    Text(l10n.s.hour1).tag(60)
+                    Text(l10n.s.hours2).tag(120)
+                    Text(l10n.s.hours4).tag(240)
+                    Text(l10n.s.hours8).tag(480)
+                    Text(l10n.s.indefinite).tag(0)
+                }
+            case .micMute:
+                Toggle(l10n.s.micMuteMenuBarToggle, isOn: $micBadgeInMenuBar)
+            case .clipboard:
+                Toggle(FeatureStrings.clipboard(l10n.language).enable, isOn: $clipboardEnabled)
+                    // Same sync the Settings toggle performs: writing the
+                    // default alone does not start or stop the watcher.
+                    .onChange(of: clipboardEnabled) { _, _ in
+                        ClipboardHistoryService.shared.syncWithPreferences()
+                    }
+                if clipboardEnabled {
+                    Picker(FeatureStrings.clipboard(l10n.language).limit, selection: $clipboardLimit) {
+                        ForEach(Defaults.allowedClipboardHistoryLimits, id: \.self) { value in
+                            Text("\(value)").tag(value)
+                        }
+                    }
+                }
+            case .colorPicker:
+                Picker(l10n.s.colorPickerFormatLabel, selection: $colorFormat) {
+                    ForEach(ColorCopyFormat.allCases) { format in
+                        Text(format.label).tag(format.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                if colorFormat == ColorCopyFormat.hex.rawValue {
+                    Toggle(l10n.s.colorPickerBareHexToggle, isOn: $colorBareHex)
+                }
+            default:
+                EmptyView()
+            }
+        }
+        .font(.system(size: 11))
+        .toggleStyle(.switch)
+        .controlSize(.small)
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        )
     }
 
     // MARK: - Item metadata

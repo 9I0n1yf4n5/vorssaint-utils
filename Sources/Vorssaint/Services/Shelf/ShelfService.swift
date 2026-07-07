@@ -9,8 +9,10 @@ import UniformTypeIdentifiers
 
 /// A floating "shelf" that holds files, images, text and links you drop on it,
 /// to drag back out into any app later. It's summoned at the cursor by a global
-/// shortcut or, optionally, by shaking the mouse mid-drag. Items live
-/// only while the app runs.
+/// shortcut or, optionally, by shaking the mouse mid-drag. Items survive
+/// relaunches (and updates): payloads persist in UserDefaults, and pasted
+/// images and GIFs are stored next to the clipboard images in Application
+/// Support.
 ///
 /// No permissions required: the shortcut is a Carbon hot key, and the shake
 /// detector is a passive global mouse monitor.
@@ -59,7 +61,10 @@ final class ShelfService: ObservableObject {
     }
 
     @Published private(set) var items: [Item] = [] {
-        didSet { scheduleRefit() }
+        didSet {
+            scheduleRefit()
+            schedulePersist()
+        }
     }
     /// Ids of tiles the user has selected; a drag of any selected tile drags
     /// the whole selection out together.
@@ -105,9 +110,33 @@ final class ShelfService: ObservableObject {
         return dir
     }()
 
+    /// Payload files for pasted images and GIFs, next to the clipboard images:
+    /// Application Support/<bundle id>/ShelfFiles. They used to live in the
+    /// system temp dir, but persistent items cannot (the OS, or our own
+    /// startup sweep, could delete them at any point).
+    private static let storeDirectory: URL? = {
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory,
+                                                  in: .userDomainMask).first,
+              let bundleID = Bundle.main.bundleIdentifier
+        else { return nil }
+        return base
+            .appendingPathComponent(bundleID, isDirectory: true)
+            .appendingPathComponent("ShelfFiles", isDirectory: true)
+    }()
+
+    /// Writes coalesce per mutation cycle already; the JSON encode itself
+    /// also stays off the main thread (a full shelf of large texts is real
+    /// work), serialized so blobs land in mutation order.
+    private static let persistQueue = DispatchQueue(label: "com.vorssaint.utils.shelf-persist",
+                                                    qos: .utility)
+
+    private var persistScheduled = false
+    /// Gates persistence until the restore has landed, so an early mutation
+    /// cannot overwrite the saved shelf with a partial list.
+    private var restoreCompleted = false
+
     private init() {
-        cleanTemporaryFiles()
-        cleanLegacyTemporaryFiles()
+        restoreItems()
     }
 
     var isVisible: Bool { panel?.isVisible == true }
@@ -410,7 +439,7 @@ final class ShelfService: ObservableObject {
         var removed: [Item] = []
         removeItems(Set([id]), from: &items, removed: &removed)
         cleanSelectionState()
-        retireTemporaryPayloads(in: removed)
+        retireOwnedPayloads(in: removed)
         noteInteraction()
     }
 
@@ -421,7 +450,7 @@ final class ShelfService: ObservableObject {
         var removed: [Item] = []
         removeItems(set, from: &items, removed: &removed)
         cleanSelectionState()
-        retireTemporaryPayloads(in: removed)
+        retireOwnedPayloads(in: removed)
         noteInteraction()
     }
 
@@ -430,7 +459,7 @@ final class ShelfService: ObservableObject {
         items = []
         selection = []
         expandedBatches = []
-        retireTemporaryPayloads(in: removed)
+        retireOwnedPayloads(in: removed)
         noteInteraction()
     }
 
@@ -558,39 +587,53 @@ final class ShelfService: ObservableObject {
         append(linkItem(for: url))
     }
 
-    private func fileItem(for url: URL) -> Item {
+    private func fileItem(for url: URL, id: UUID = UUID(), title: String? = nil) -> Item {
         let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "heic", "heif", "tiff", "bmp", "webp"]
         let isImage = imageExtensions.contains(url.pathExtension.lowercased())
         let fallbackIcon = NSWorkspace.shared.icon(forFile: url.path)
         let icon = (isImage ? ImageThumbnailer.thumbnail(for: url) : nil)
             ?? ImageThumbnailer.thumbnail(for: fallbackIcon)
             ?? fallbackIcon
-        return Item(payload: .file(url), title: url.lastPathComponent, icon: icon, isImage: isImage)
+        return Item(id: id, payload: .file(url), title: title ?? url.lastPathComponent,
+                    icon: icon, isImage: isImage)
     }
 
     private func imageItem(for image: NSImage) -> Item? {
-        let url = tempDir.appendingPathComponent("\(UUID().uuidString).png")
         let icon = ImageThumbnailer.thumbnail(for: image) ?? symbol("photo")
         if let png = autoreleasepool(invoking: { () -> Data? in
             guard let tiff = image.tiffRepresentation,
                   let rep = NSBitmapImageRep(data: tiff) else { return nil }
             return rep.representation(using: .png, properties: [:])
-        }) {
-            try? png.write(to: url)
+        }), let url = storePayloadData(png, fileExtension: "png") {
             return Item(payload: .file(url), title: L10n.shared.s.shelfItemImage, icon: icon, isImage: true)
         }
         return nil
     }
 
     private func gifItem(for data: Data) -> Item? {
-        let url = tempDir.appendingPathComponent("\(UUID().uuidString).gif")
+        guard let url = storePayloadData(data, fileExtension: "gif") else { return nil }
+        let icon = ImageThumbnailer.thumbnail(for: url) ?? symbol("photo")
+        return Item(payload: .file(url), title: "GIF", icon: icon, isImage: true)
+    }
+
+    /// Writes a pasted payload where it can outlive this run; only if the
+    /// Application Support store is unavailable does it fall back to the temp
+    /// dir (the item then works for this session, as it always did).
+    private func storePayloadData(_ data: Data, fileExtension: String) -> URL? {
+        let directory: URL
+        if let store = Self.storeDirectory {
+            try? FileManager.default.createDirectory(at: store, withIntermediateDirectories: true)
+            directory = store
+        } else {
+            directory = tempDir
+        }
+        let url = directory.appendingPathComponent("\(UUID().uuidString).\(fileExtension)")
         do {
             try data.write(to: url, options: .atomic)
         } catch {
             return nil
         }
-        let icon = ImageThumbnailer.thumbnail(for: url) ?? symbol("photo")
-        return Item(payload: .file(url), title: "GIF", icon: icon, isImage: true)
+        return url
     }
 
     private func textItem(for string: String) -> Item? {
@@ -765,25 +808,27 @@ final class ShelfService: ObservableObject {
         return false
     }
 
-    private func retireTemporaryPayloads(in removed: [Item]) {
-        let urls = removed.flatMap { temporaryPayloadURLs(in: $0) }
+    private func retireOwnedPayloads(in removed: [Item]) {
+        let urls = removed.flatMap { ownedPayloadURLs(in: $0) }
         guard !urls.isEmpty else { return }
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + .seconds(10 * 60)) {
             let fm = FileManager.default
-            for url in urls where self.isShelfTemporaryFile(url) {
+            for url in urls where self.isShelfOwnedFile(url) {
                 try? fm.removeItem(at: url)
             }
         }
     }
 
-    private func temporaryPayloadURLs(in item: Item) -> [URL] {
+    /// Payload files the shelf itself wrote (pasted images and GIFs) and may
+    /// therefore delete; files the user dropped are never touched.
+    private func ownedPayloadURLs(in item: Item) -> [URL] {
         switch item.payload {
         case let .file(url):
-            return isShelfTemporaryFile(url) ? [url] : []
+            return isShelfOwnedFile(url) ? [url] : []
         case .text, .link:
             return []
         case let .batch(items):
-            return items.flatMap { temporaryPayloadURLs(in: $0) }
+            return items.flatMap { ownedPayloadURLs(in: $0) }
         }
     }
 
@@ -900,11 +945,11 @@ final class ShelfService: ObservableObject {
         expandedBatches.formIntersection(batchIDs(in: items))
     }
 
-    private func cleanTemporaryFiles() {
+    private func cleanTemporaryFiles(keeping keptPaths: Set<String>) {
         let fm = FileManager.default
         guard let entries = try? fm.contentsOfDirectory(at: tempDir,
                                                         includingPropertiesForKeys: nil) else { return }
-        for url in entries where isShelfTemporaryFile(url) {
+        for url in entries where isShelfOwnedFile(url) && !keptPaths.contains(url.standardizedFileURL.path) {
             try? fm.removeItem(at: url)
         }
     }
@@ -921,14 +966,141 @@ final class ShelfService: ObservableObject {
         }
     }
 
-    private func isShelfTemporaryFile(_ url: URL) -> Bool {
-        let dir = tempDir.standardizedFileURL.path
+    private func isShelfOwnedFile(_ url: URL) -> Bool {
         let path = url.standardizedFileURL.path
-        return path.hasPrefix(dir + "/")
+        if path.hasPrefix(tempDir.standardizedFileURL.path + "/") { return true }
+        guard let store = Self.storeDirectory else { return false }
+        return path.hasPrefix(store.standardizedFileURL.path + "/")
     }
 
     private func symbol(_ name: String) -> NSImage {
         NSImage(systemSymbolName: name, accessibilityDescription: nil) ?? NSImage()
+    }
+
+    // MARK: - Persistence
+
+    /// Coalesces the saves of one mutation cycle into a single write. Gated
+    /// until the restore lands so an early mutation cannot overwrite the saved
+    /// shelf with a partial list.
+    private func schedulePersist() {
+        guard restoreCompleted, !persistScheduled else { return }
+        persistScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.persistScheduled = false
+            self.persistItems()
+        }
+    }
+
+    private func persistItems() {
+        let persisted = items.map(Self.persistedItem(from:))
+        Self.persistQueue.async {
+            guard let data = try? JSONEncoder().encode(persisted) else { return }
+            UserDefaults.standard.set(data, forKey: DefaultsKey.shelfItems)
+        }
+    }
+
+    /// Restores the saved shelf off the main thread (file checks and image
+    /// thumbnails touch the disk, and this runs at launch), merges it with
+    /// anything added in the meantime, then sweeps payload files that lost
+    /// their item (crash between write and save, or dropped at sanitizing).
+    private func restoreItems() {
+        let data = UserDefaults.standard.data(forKey: DefaultsKey.shelfItems)
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            var restored: [Item] = []
+            if let data,
+               let decoded = try? JSONDecoder().decode([ShelfPersistedItem].self, from: data) {
+                let sanitized = ShelfPersistenceSupport.sanitized(decoded) { path in
+                    if FileManager.default.fileExists(atPath: path) { return true }
+                    // A file on an unmounted volume is not gone: the app can
+                    // launch at login before an external or network drive
+                    // appears, and dropping the item here would lose it the
+                    // moment the pruned list is saved back.
+                    if let volumeRoot = ShelfPersistenceSupport.unmountedVolumeRoot(of: path) {
+                        return !FileManager.default.fileExists(atPath: volumeRoot)
+                    }
+                    return false
+                }
+                restored = sanitized.compactMap { self.restoredItem(from: $0) }
+            }
+            DispatchQueue.main.async {
+                self.restoreCompleted = true
+                if restored.isEmpty {
+                    self.schedulePersist()
+                } else {
+                    self.items = restored + self.items
+                }
+                let keptPaths = Set(self.items.flatMap { self.ownedPayloadURLs(in: $0) }
+                    .map(\.standardizedFileURL.path))
+                let sweepCutoff = Date()
+                DispatchQueue.global(qos: .utility).async {
+                    self.sweepOwnedFiles(keeping: keptPaths, writtenBefore: sweepCutoff)
+                }
+            }
+        }
+    }
+
+    private static func persistedItem(from item: Item) -> ShelfPersistedItem {
+        switch item.payload {
+        case let .file(url):
+            return ShelfPersistedItem(id: item.id, kind: .file, title: item.title, path: url.path)
+        case let .text(text):
+            return ShelfPersistedItem(id: item.id, kind: .text, title: item.title, text: text)
+        case let .link(url):
+            return ShelfPersistedItem(id: item.id, kind: .link, title: item.title,
+                                      url: url.absoluteString)
+        case let .batch(children):
+            return ShelfPersistedItem(id: item.id, kind: .batch, title: item.title,
+                                      children: children.map(persistedItem(from:)))
+        }
+    }
+
+    private func restoredItem(from persisted: ShelfPersistedItem) -> Item? {
+        switch persisted.kind {
+        case .file:
+            guard let path = persisted.path else { return nil }
+            return fileItem(for: URL(fileURLWithPath: path), id: persisted.id,
+                            title: persisted.title.isEmpty ? nil : persisted.title)
+        case .text:
+            guard let text = persisted.text else { return nil }
+            let firstLine = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? text
+            let title = persisted.title.isEmpty ? String(firstLine.prefix(48)) : persisted.title
+            return Item(id: persisted.id, payload: .text(text), title: title,
+                        icon: symbol("doc.plaintext"), isImage: false)
+        case .link:
+            guard let raw = persisted.url, let url = URL(string: raw) else { return nil }
+            let title = persisted.title.isEmpty ? (url.host ?? url.absoluteString) : persisted.title
+            return Item(id: persisted.id, payload: .link(url), title: title,
+                        icon: symbol("link"), isImage: false)
+        case .batch:
+            let children = (persisted.children ?? []).compactMap { restoredItem(from: $0) }
+            guard !children.isEmpty else { return nil }
+            guard children.count > 1 else { return children[0] }
+            return batchItem(id: persisted.id, children: children)
+        }
+    }
+
+    /// Deletes shelf-written payload files no restored item references, plus
+    /// the temp dirs earlier versions used for pasted images. Only files
+    /// written before the reference snapshot are touched: the sweep runs on a
+    /// background queue, and a payload pasted between the snapshot and the
+    /// enumeration must not be deleted out from under its fresh item.
+    private func sweepOwnedFiles(keeping keptPaths: Set<String>, writtenBefore cutoff: Date) {
+        let fm = FileManager.default
+        if let store = Self.storeDirectory,
+           let entries = try? fm.contentsOfDirectory(at: store,
+                                                     includingPropertiesForKeys: [.contentModificationDateKey]) {
+            for url in entries where !keptPaths.contains(url.standardizedFileURL.path) {
+                let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+                    .contentModificationDate ?? .distantPast
+                if modified < cutoff {
+                    try? fm.removeItem(at: url)
+                }
+            }
+        }
+        cleanTemporaryFiles(keeping: keptPaths)
+        cleanLegacyTemporaryFiles()
     }
 
     // MARK: - Panel

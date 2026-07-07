@@ -76,12 +76,14 @@ enum FeatureStrings {
 struct SettingsCategoryStrings {
     let essentials: String
     let windowsControls: String
+    let files: String
     let utilities: String
     let app: String
 
     static let enUS = SettingsCategoryStrings(
         essentials: "Essentials",
         windowsControls: "Window controls",
+        files: "Files",
         utilities: "Utilities",
         app: "App"
     )
@@ -89,6 +91,7 @@ struct SettingsCategoryStrings {
     static let ptBR = SettingsCategoryStrings(
         essentials: "Essenciais",
         windowsControls: "Janelas e controles",
+        files: "Arquivos",
         utilities: "Utilitários",
         app: "App"
     )
@@ -96,6 +99,7 @@ struct SettingsCategoryStrings {
     static let tr = SettingsCategoryStrings(
         essentials: "Temel",
         windowsControls: "Pencereler ve denetimler",
+        files: "Dosyalar",
         utilities: "Araçlar",
         app: "Uygulama"
     )
@@ -103,6 +107,7 @@ struct SettingsCategoryStrings {
     static let ru = SettingsCategoryStrings(
         essentials: "Основное",
         windowsControls: "Окна и управление",
+        files: "Файлы",
         utilities: "Утилиты",
         app: "Приложение"
     )
@@ -110,6 +115,7 @@ struct SettingsCategoryStrings {
     static let es = SettingsCategoryStrings(
         essentials: "Esenciales",
         windowsControls: "Ventanas y controles",
+        files: "Archivos",
         utilities: "Utilidades",
         app: "App"
     )
@@ -117,6 +123,7 @@ struct SettingsCategoryStrings {
     static let de = SettingsCategoryStrings(
         essentials: "Grundlagen",
         windowsControls: "Fenster und Steuerung",
+        files: "Dateien",
         utilities: "Dienstprogramme",
         app: "App"
     )
@@ -124,6 +131,7 @@ struct SettingsCategoryStrings {
     static let fr = SettingsCategoryStrings(
         essentials: "Essentiel",
         windowsControls: "Fenêtres et contrôles",
+        files: "Fichiers",
         utilities: "Utilitaires",
         app: "App"
     )
@@ -131,6 +139,7 @@ struct SettingsCategoryStrings {
     static let it = SettingsCategoryStrings(
         essentials: "Essenziali",
         windowsControls: "Finestre e controlli",
+        files: "File",
         utilities: "Utilità",
         app: "App"
     )
@@ -138,6 +147,7 @@ struct SettingsCategoryStrings {
     static let ja = SettingsCategoryStrings(
         essentials: "基本機能",
         windowsControls: "ウインドウと操作",
+        files: "ファイル",
         utilities: "ユーティリティ",
         app: "App"
     )
@@ -145,6 +155,7 @@ struct SettingsCategoryStrings {
     static let zhHans = SettingsCategoryStrings(
         essentials: "基础功能",
         windowsControls: "窗口与控制",
+        files: "文件",
         utilities: "实用工具",
         app: "App"
     )
@@ -152,6 +163,7 @@ struct SettingsCategoryStrings {
     static let zhTW = SettingsCategoryStrings(
         essentials: "基本功能",
         windowsControls: "視窗與控制",
+        files: "檔案",
         utilities: "工具程式",
         app: "App"
     )
@@ -159,6 +171,7 @@ struct SettingsCategoryStrings {
     static let zhHK = SettingsCategoryStrings(
         essentials: "基本功能",
         windowsControls: "視窗及控制",
+        files: "檔案",
         utilities: "工具",
         app: "App"
     )
@@ -192,7 +205,9 @@ struct ClipboardFeatureStrings {
     let delete: String
     let selectMultiple: String
     let unselectMultiple: String
-    let selectedCountFormat: String
+    let selectShortcutAction: String
+    let pasteSelectedFormat: String
+    let copySelectedFormat: String
     let clearSelection: String
     let moveUp: String
     let moveDown: String
@@ -215,7 +230,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "Show in panel",
         shortcut: "History shortcut",
         shortcutCaption: "Opens a quick window with search, pinned items and ⌘1 to ⌘9 shortcuts for pasting into the previous app.",
-        shortcutHint: "Click a row to copy and paste into the previous app. ⌘-click only copies.",
+        shortcutHint: "Click a row to paste it into the previous app. ⌘-click selects several; ⌘C copies without pasting.",
         clickRowShortcut: "Click row",
         commandClickShortcut: "⌘ Click",
         pinned: "Pinned",
@@ -232,7 +247,9 @@ struct ClipboardFeatureStrings {
         delete: "Delete item",
         selectMultiple: "Add to pile",
         unselectMultiple: "Remove from pile",
-        selectedCountFormat: "%d selected",
+        selectShortcutAction: "Select",
+        pasteSelectedFormat: "Paste %d",
+        copySelectedFormat: "Copy %d",
         clearSelection: "Clear selection",
         moveUp: "Move up",
         moveDown: "Move down",
@@ -256,7 +273,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "Mostrar no painel",
         shortcut: "Atalho do histórico",
         shortcutCaption: "Abre uma janela rápida com busca, favoritos e atalhos ⌘1 a ⌘9 para colar no app anterior.",
-        shortcutHint: "Clique na linha para copiar e colar no app anterior. ⌘+clique só copia.",
+        shortcutHint: "Clique numa linha para colar no app anterior. ⌘+clique seleciona várias; ⌘C copia sem colar.",
         clickRowShortcut: "Clique na linha",
         commandClickShortcut: "⌘ Clique",
         pinned: "Fixados",
@@ -273,7 +290,9 @@ struct ClipboardFeatureStrings {
         delete: "Apagar item",
         selectMultiple: "Marcar para pilha",
         unselectMultiple: "Remover da pilha",
-        selectedCountFormat: "%d marcados",
+        selectShortcutAction: "Selecionar",
+        pasteSelectedFormat: "Colar %d",
+        copySelectedFormat: "Copiar %d",
         clearSelection: "Limpar seleção",
         moveUp: "Mover para cima",
         moveDown: "Mover para baixo",
@@ -297,7 +316,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "Panelde göster",
         shortcut: "Geçmiş kısayolu",
         shortcutCaption: "Arama, sabitlenmiş öğeler ve önceki uygulamaya yapıştırmak için ⌘1 - ⌘9 kısayolları olan hızlı bir pencere açar.",
-        shortcutHint: "Bir satıra tıklayarak önceki uygulamaya kopyalayıp yapıştır. ⌘-tıklama yalnızca kopyalar.",
+        shortcutHint: "Bir satıra tıklayarak önceki uygulamaya yapıştırın. ⌘-tıklama birden çok öğe seçer; ⌘C yapıştırmadan kopyalar.",
         clickRowShortcut: "Satıra tıkla",
         commandClickShortcut: "⌘ Tıkla",
         pinned: "Sabitlenenler",
@@ -314,7 +333,9 @@ struct ClipboardFeatureStrings {
         delete: "Öğeyi sil",
         selectMultiple: "Yığına ekle",
         unselectMultiple: "Yığından çıkar",
-        selectedCountFormat: "%d seçili",
+        selectShortcutAction: "Seç",
+        pasteSelectedFormat: "%d öğeyi yapıştır",
+        copySelectedFormat: "%d öğeyi kopyala",
         clearSelection: "Seçimi temizle",
         moveUp: "Yukarı taşı",
         moveDown: "Aşağı taşı",
@@ -338,7 +359,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "Показывать в панели",
         shortcut: "Горячая клавиша истории",
         shortcutCaption: "Открывает быстрое окно с поиском, закреплёнными элементами и сочетаниями ⌘1–⌘9 для вставки в предыдущее приложение.",
-        shortcutHint: "Щёлкните по строке, чтобы скопировать и вставить текст в предыдущее приложение. ⌘-клик только копирует.",
+        shortcutHint: "Щёлкните по строке, чтобы вставить её в предыдущее приложение. ⌘-клик выбирает несколько; ⌘C копирует без вставки.",
         clickRowShortcut: "Щелчок по строке",
         commandClickShortcut: "⌘ Клик",
         pinned: "Закреплённые",
@@ -355,7 +376,9 @@ struct ClipboardFeatureStrings {
         delete: "Удалить элемент",
         selectMultiple: "Добавить в стопку",
         unselectMultiple: "Убрать из стопки",
-        selectedCountFormat: "Выбрано: %d",
+        selectShortcutAction: "Выбрать",
+        pasteSelectedFormat: "Вставить: %d",
+        copySelectedFormat: "Копировать: %d",
         clearSelection: "Снять выделение",
         moveUp: "Вверх",
         moveDown: "Вниз",
@@ -379,7 +402,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "Mostrar en el panel",
         shortcut: "Atajo del historial",
         shortcutCaption: "Abre una ventana rápida con búsqueda, elementos fijados y atajos ⌘1 a ⌘9 para pegar en la app anterior.",
-        shortcutHint: "Haz clic en una fila para copiar y pegar en la app anterior. ⌘+clic solo copia.",
+        shortcutHint: "Haz clic en una fila para pegarla en la app anterior. ⌘+clic selecciona varias; ⌘C copia sin pegar.",
         clickRowShortcut: "Clic en fila",
         commandClickShortcut: "⌘ Clic",
         pinned: "Fijados",
@@ -396,7 +419,9 @@ struct ClipboardFeatureStrings {
         delete: "Eliminar elemento",
         selectMultiple: "Añadir a la pila",
         unselectMultiple: "Quitar de la pila",
-        selectedCountFormat: "%d seleccionados",
+        selectShortcutAction: "Seleccionar",
+        pasteSelectedFormat: "Pegar %d",
+        copySelectedFormat: "Copiar %d",
         clearSelection: "Limpiar selección",
         moveUp: "Subir",
         moveDown: "Bajar",
@@ -420,7 +445,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "Im Panel anzeigen",
         shortcut: "Verlaufskürzel",
         shortcutCaption: "Öffnet ein Schnellfenster mit Suche, angehefteten Einträgen und ⌘1 bis ⌘9 zum Einfügen in die vorherige App.",
-        shortcutHint: "Klicke auf eine Zeile, um in die vorherige App zu kopieren und einzufügen. ⌘-Klick kopiert nur.",
+        shortcutHint: "Klicke auf eine Zeile, um sie in die vorherige App einzufügen. ⌘-Klick wählt mehrere aus; ⌘C kopiert ohne Einfügen.",
         clickRowShortcut: "Zeile klicken",
         commandClickShortcut: "⌘ Klick",
         pinned: "Angeheftet",
@@ -437,7 +462,9 @@ struct ClipboardFeatureStrings {
         delete: "Eintrag löschen",
         selectMultiple: "Zum Stapel hinzufügen",
         unselectMultiple: "Aus dem Stapel entfernen",
-        selectedCountFormat: "%d ausgewählt",
+        selectShortcutAction: "Auswählen",
+        pasteSelectedFormat: "%d einfügen",
+        copySelectedFormat: "%d kopieren",
         clearSelection: "Auswahl löschen",
         moveUp: "Nach oben",
         moveDown: "Nach unten",
@@ -461,7 +488,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "Afficher dans le panneau",
         shortcut: "Raccourci de l'historique",
         shortcutCaption: "Ouvre une fenêtre rapide avec recherche, éléments épinglés et raccourcis ⌘1 à ⌘9 pour coller dans l'app précédente.",
-        shortcutHint: "Cliquez sur une ligne pour copier et coller dans l'app précédente. ⌘+clic copie seulement.",
+        shortcutHint: "Cliquez sur une ligne pour la coller dans l'app précédente. ⌘+clic en sélectionne plusieurs ; ⌘C copie sans coller.",
         clickRowShortcut: "Cliquer la ligne",
         commandClickShortcut: "⌘ Clic",
         pinned: "Épinglés",
@@ -478,7 +505,9 @@ struct ClipboardFeatureStrings {
         delete: "Supprimer l'élément",
         selectMultiple: "Ajouter à la pile",
         unselectMultiple: "Retirer de la pile",
-        selectedCountFormat: "%d sélectionnés",
+        selectShortcutAction: "Sélectionner",
+        pasteSelectedFormat: "Coller %d",
+        copySelectedFormat: "Copier %d",
         clearSelection: "Effacer la sélection",
         moveUp: "Monter",
         moveDown: "Descendre",
@@ -502,7 +531,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "Mostra nel pannello",
         shortcut: "Scorciatoia cronologia",
         shortcutCaption: "Apre una finestra rapida con ricerca, elementi fissati e scorciatoie ⌘1 a ⌘9 per incollare nell'app precedente.",
-        shortcutHint: "Fai clic su una riga per copiare e incollare nell'app precedente. ⌘+clic copia soltanto.",
+        shortcutHint: "Fai clic su una riga per incollarla nell'app precedente. ⌘+clic ne seleziona diverse; ⌘C copia senza incollare.",
         clickRowShortcut: "Clic sulla riga",
         commandClickShortcut: "⌘ Clic",
         pinned: "Fissati",
@@ -519,7 +548,9 @@ struct ClipboardFeatureStrings {
         delete: "Elimina elemento",
         selectMultiple: "Aggiungi alla pila",
         unselectMultiple: "Rimuovi dalla pila",
-        selectedCountFormat: "%d selezionati",
+        selectShortcutAction: "Seleziona",
+        pasteSelectedFormat: "Incolla %d",
+        copySelectedFormat: "Copia %d",
         clearSelection: "Cancella selezione",
         moveUp: "Sposta su",
         moveDown: "Sposta giù",
@@ -543,7 +574,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "パネルに表示",
         shortcut: "履歴ショートカット",
         shortcutCaption: "検索、固定項目、前のアプリへ貼り付ける ⌘1 から ⌘9 のショートカットを備えたクイックウインドウを開きます。",
-        shortcutHint: "行をクリックするとコピーして前のアプリに貼り付けます。⌘クリックはコピーのみです。",
+        shortcutHint: "行をクリックすると前のアプリに貼り付けます。⌘クリックで複数選択、⌘C は貼り付けずにコピーします。",
         clickRowShortcut: "行をクリック",
         commandClickShortcut: "⌘ クリック",
         pinned: "固定済み",
@@ -560,7 +591,9 @@ struct ClipboardFeatureStrings {
         delete: "項目を削除",
         selectMultiple: "束に追加",
         unselectMultiple: "束から削除",
-        selectedCountFormat: "%d 件選択",
+        selectShortcutAction: "選択",
+        pasteSelectedFormat: "%d件を貼り付け",
+        copySelectedFormat: "%d件をコピー",
         clearSelection: "選択を解除",
         moveUp: "上へ移動",
         moveDown: "下へ移動",
@@ -584,7 +617,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "在面板中显示",
         shortcut: "历史快捷键",
         shortcutCaption: "打开快速窗口，支持搜索、固定项目，以及用 ⌘1 到 ⌘9 粘贴到上一个 App。",
-        shortcutHint: "点击整行即可复制并粘贴到上一个 App。⌘+点击仅复制。",
+        shortcutHint: "点击整行即可粘贴到上一个 App。⌘+点击可选择多项；⌘C 仅复制不粘贴。",
         clickRowShortcut: "点击整行",
         commandClickShortcut: "⌘ 点击",
         pinned: "已固定",
@@ -601,7 +634,9 @@ struct ClipboardFeatureStrings {
         delete: "删除项目",
         selectMultiple: "加入堆叠",
         unselectMultiple: "从堆叠移除",
-        selectedCountFormat: "已选择 %d 项",
+        selectShortcutAction: "选择",
+        pasteSelectedFormat: "粘贴 %d 项",
+        copySelectedFormat: "复制 %d 项",
         clearSelection: "清除选择",
         moveUp: "上移",
         moveDown: "下移",
@@ -625,7 +660,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "在面板中顯示",
         shortcut: "剪貼簿紀錄快速鍵",
         shortcutCaption: "開啟快速視窗，可搜尋、釘選項目，並使用 ⌘1 到 ⌘9 貼到上一個 App。",
-        shortcutHint: "點選整列即可複製並貼到上一個 App。按住 ⌘ 再點選則只會複製。",
+        shortcutHint: "點選整列即可貼到上一個 App。⌘+點選可選取多個項目；⌘C 只複製不貼上。",
         clickRowShortcut: "點選整列",
         commandClickShortcut: "⌘ 點選",
         pinned: "已釘選",
@@ -642,7 +677,9 @@ struct ClipboardFeatureStrings {
         delete: "刪除項目",
         selectMultiple: "加入堆疊",
         unselectMultiple: "從堆疊移除",
-        selectedCountFormat: "已選取 %d 個項目",
+        selectShortcutAction: "選取",
+        pasteSelectedFormat: "貼上 %d 個",
+        copySelectedFormat: "拷貝 %d 個",
         clearSelection: "清除選取項目",
         moveUp: "上移",
         moveDown: "下移",
@@ -666,7 +703,7 @@ struct ClipboardFeatureStrings {
         showInPanel: "在面板中顯示",
         shortcut: "剪貼簿記錄快捷鍵",
         shortcutCaption: "開啟快速視窗，可搜尋、釘選項目，並使用 ⌘1 至 ⌘9 貼到上一個 App。",
-        shortcutHint: "按一下整列即可複製並貼到上一個 App。按住 ⌘ 再按一下則只會複製。",
+        shortcutHint: "按一下整列即可貼到上一個 App。⌘+按一下可選取多個項目；⌘C 只複製不貼上。",
         clickRowShortcut: "按一下整列",
         commandClickShortcut: "⌘ 按一下",
         pinned: "已釘選",
@@ -683,7 +720,9 @@ struct ClipboardFeatureStrings {
         delete: "刪除項目",
         selectMultiple: "加入堆疊",
         unselectMultiple: "從堆疊移除",
-        selectedCountFormat: "已選取 %d 個項目",
+        selectShortcutAction: "選取",
+        pasteSelectedFormat: "貼上 %d 個",
+        copySelectedFormat: "複製 %d 個",
         clearSelection: "清除所選項目",
         moveUp: "上移",
         moveDown: "下移",
@@ -1181,6 +1220,7 @@ struct WindowLayoutFeatureStrings {
 struct MonitorAlertFeatureStrings {
     let section: String
     let caption: String
+    let notificationsDenied: String
     let cpu: String
     let cpuTemperature: String
     let memory: String
@@ -1191,6 +1231,7 @@ struct MonitorAlertFeatureStrings {
     let diskThreshold: String
     let batteryThreshold: String
     let cooldown: String
+    let cooldown2: String
     let cooldown5: String
     let cooldown15: String
     let cooldown30: String
@@ -1209,6 +1250,7 @@ struct MonitorAlertFeatureStrings {
     static let enUS = MonitorAlertFeatureStrings(
         section: "Alerts",
         caption: "Off by default. When enabled, Monitor warns only after a useful condition and respects the alert interval.",
+        notificationsDenied: "Notifications for Vorssaint are off in System Settings, so alerts cannot appear.",
         cpu: "High CPU",
         cpuTemperature: "High CPU temperature",
         memory: "Critical memory pressure",
@@ -1219,6 +1261,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "Free space below",
         batteryThreshold: "Battery below",
         cooldown: "Alert interval",
+        cooldown2: "2 minutes",
         cooldown5: "5 minutes",
         cooldown15: "15 minutes",
         cooldown30: "30 minutes",
@@ -1238,6 +1281,7 @@ struct MonitorAlertFeatureStrings {
     static let ptBR = MonitorAlertFeatureStrings(
         section: "Alertas",
         caption: "Desligado por padrão. Quando ligado, o Monitor avisa só depois de uma condição relevante e respeita o intervalo entre avisos.",
+        notificationsDenied: "As notificações do Vorssaint estão desativadas nos Ajustes do Sistema, então os alertas não aparecem.",
         cpu: "CPU alta",
         cpuTemperature: "Temperatura alta da CPU",
         memory: "Pressão de memória crítica",
@@ -1248,6 +1292,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "Espaço livre abaixo de",
         batteryThreshold: "Bateria abaixo de",
         cooldown: "Intervalo entre avisos",
+        cooldown2: "2 minutos",
         cooldown5: "5 minutos",
         cooldown15: "15 minutos",
         cooldown30: "30 minutos",
@@ -1267,6 +1312,7 @@ struct MonitorAlertFeatureStrings {
     static let tr = MonitorAlertFeatureStrings(
         section: "Uyarılar",
         caption: "Varsayılan olarak kapalıdır. Etkinleştirildiğinde Monitör yalnızca anlamlı bir koşuldan sonra uyarır ve uyarı aralığına uyar.",
+        notificationsDenied: "Sistem Ayarları'nda Vorssaint bildirimleri kapalı, bu yüzden uyarılar görünemez.",
         cpu: "Yüksek CPU",
         cpuTemperature: "Yüksek CPU sıcaklığı",
         memory: "Kritik bellek basıncı",
@@ -1277,6 +1323,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "Boş alan şu değerin altında",
         batteryThreshold: "Pil şu değerin altında",
         cooldown: "Uyarı aralığı",
+        cooldown2: "2 dakika",
         cooldown5: "5 dakika",
         cooldown15: "15 dakika",
         cooldown30: "30 dakika",
@@ -1296,6 +1343,7 @@ struct MonitorAlertFeatureStrings {
     static let ru = MonitorAlertFeatureStrings(
         section: "Оповещения",
         caption: "По умолчанию выключено. Когда функция включена, Monitor предупреждает только после полезного условия и соблюдает интервал между оповещениями.",
+        notificationsDenied: "Уведомления Vorssaint выключены в Системных настройках, поэтому оповещения не появятся.",
         cpu: "Высокая нагрузка CPU",
         cpuTemperature: "Высокая температура CPU",
         memory: "Критическое давление памяти",
@@ -1306,6 +1354,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "Свободного места меньше",
         batteryThreshold: "Батарея ниже",
         cooldown: "Интервал оповещений",
+        cooldown2: "2 минуты",
         cooldown5: "5 минут",
         cooldown15: "15 минут",
         cooldown30: "30 минут",
@@ -1325,6 +1374,7 @@ struct MonitorAlertFeatureStrings {
     static let es = MonitorAlertFeatureStrings(
         section: "Alertas",
         caption: "Desactivado por defecto. Al activarlo, Monitor avisa solo tras una condición relevante y respeta el intervalo entre avisos.",
+        notificationsDenied: "Las notificaciones de Vorssaint están desactivadas en Ajustes del Sistema, así que las alertas no aparecen.",
         cpu: "CPU alta",
         cpuTemperature: "Temperatura de CPU alta",
         memory: "Presión de memoria crítica",
@@ -1335,6 +1385,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "Espacio libre por debajo de",
         batteryThreshold: "Batería por debajo de",
         cooldown: "Intervalo entre avisos",
+        cooldown2: "2 minutos",
         cooldown5: "5 minutos",
         cooldown15: "15 minutos",
         cooldown30: "30 minutos",
@@ -1354,6 +1405,7 @@ struct MonitorAlertFeatureStrings {
     static let de = MonitorAlertFeatureStrings(
         section: "Warnungen",
         caption: "Standardmäßig aus. Wenn aktiviert, warnt der Monitor nur nach einem relevanten Zustand und beachtet das Warnintervall.",
+        notificationsDenied: "Mitteilungen für Vorssaint sind in den Systemeinstellungen aus, daher können keine Warnungen erscheinen.",
         cpu: "Hohe CPU",
         cpuTemperature: "Hohe CPU-Temperatur",
         memory: "Kritischer Speicherdruck",
@@ -1364,6 +1416,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "Freier Platz unter",
         batteryThreshold: "Akku unter",
         cooldown: "Warnintervall",
+        cooldown2: "2 Minuten",
         cooldown5: "5 Minuten",
         cooldown15: "15 Minuten",
         cooldown30: "30 Minuten",
@@ -1383,6 +1436,7 @@ struct MonitorAlertFeatureStrings {
     static let fr = MonitorAlertFeatureStrings(
         section: "Alertes",
         caption: "Désactivé par défaut. Une fois activé, Monitor avertit seulement après une condition utile et respecte l'intervalle d'alerte.",
+        notificationsDenied: "Les notifications de Vorssaint sont désactivées dans Réglages Système, les alertes ne peuvent donc pas apparaître.",
         cpu: "CPU élevé",
         cpuTemperature: "Température CPU élevée",
         memory: "Pression mémoire critique",
@@ -1393,6 +1447,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "Espace libre sous",
         batteryThreshold: "Batterie sous",
         cooldown: "Intervalle d'alerte",
+        cooldown2: "2 minutes",
         cooldown5: "5 minutes",
         cooldown15: "15 minutes",
         cooldown30: "30 minutes",
@@ -1412,6 +1467,7 @@ struct MonitorAlertFeatureStrings {
     static let it = MonitorAlertFeatureStrings(
         section: "Avvisi",
         caption: "Disattivato per impostazione predefinita. Quando attivo, Monitor avvisa solo dopo una condizione utile e rispetta l'intervallo tra gli avvisi.",
+        notificationsDenied: "Le notifiche di Vorssaint sono disattivate in Impostazioni di Sistema, quindi gli avvisi non compaiono.",
         cpu: "CPU alta",
         cpuTemperature: "Temperatura CPU alta",
         memory: "Pressione memoria critica",
@@ -1422,6 +1478,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "Spazio libero sotto",
         batteryThreshold: "Batteria sotto",
         cooldown: "Intervallo avvisi",
+        cooldown2: "2 minuti",
         cooldown5: "5 minuti",
         cooldown15: "15 minuti",
         cooldown30: "30 minuti",
@@ -1441,6 +1498,7 @@ struct MonitorAlertFeatureStrings {
     static let ja = MonitorAlertFeatureStrings(
         section: "アラート",
         caption: "デフォルトではオフです。有効にすると、Monitor は意味のある状態が続いた場合だけ通知し、通知間隔を守ります。",
+        notificationsDenied: "システム設定でVorssaintの通知がオフのため、アラートは表示されません。",
         cpu: "CPU 高負荷",
         cpuTemperature: "CPU 温度が高い",
         memory: "メモリ圧迫が深刻",
@@ -1451,6 +1509,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "空き容量が次を下回る",
         batteryThreshold: "バッテリーが次を下回る",
         cooldown: "通知間隔",
+        cooldown2: "2 分",
         cooldown5: "5 分",
         cooldown15: "15 分",
         cooldown30: "30 分",
@@ -1470,6 +1529,7 @@ struct MonitorAlertFeatureStrings {
     static let zhHans = MonitorAlertFeatureStrings(
         section: "提醒",
         caption: "默认关闭。启用后，监视器只会在出现有意义的状态时提醒，并遵守提醒间隔。",
+        notificationsDenied: "Vorssaint 的通知已在系统设置中关闭，警报无法显示。",
         cpu: "CPU 过高",
         cpuTemperature: "CPU 温度过高",
         memory: "内存压力严重",
@@ -1480,6 +1540,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "可用空间低于",
         batteryThreshold: "电量低于",
         cooldown: "提醒间隔",
+        cooldown2: "2 分钟",
         cooldown5: "5 分钟",
         cooldown15: "15 分钟",
         cooldown30: "30 分钟",
@@ -1499,6 +1560,7 @@ struct MonitorAlertFeatureStrings {
     static let zhTW = MonitorAlertFeatureStrings(
         section: "提醒",
         caption: "預設為關閉。開啟後，監控功能只會在出現需要注意的狀態時提醒，並依照提醒間隔發送通知。",
+        notificationsDenied: "Vorssaint 的通知已在系統設定中關閉，警示無法顯示。",
         cpu: "CPU 使用率過高",
         cpuTemperature: "CPU 溫度過高",
         memory: "記憶體壓力過高",
@@ -1509,6 +1571,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "可用空間低於",
         batteryThreshold: "電量低於",
         cooldown: "提醒間隔",
+        cooldown2: "2 分鐘",
         cooldown5: "5 分鐘",
         cooldown15: "15 分鐘",
         cooldown30: "30 分鐘",
@@ -1528,6 +1591,7 @@ struct MonitorAlertFeatureStrings {
     static let zhHK = MonitorAlertFeatureStrings(
         section: "提示",
         caption: "預設為關閉。開啟後，監察功能只會在出現需要注意的狀態時提示，並會遵循提示間隔。",
+        notificationsDenied: "Vorssaint 的通知已在系統設定中關閉，警示無法顯示。",
         cpu: "CPU 使用率過高",
         cpuTemperature: "CPU 溫度過高",
         memory: "記憶體壓力過高",
@@ -1538,6 +1602,7 @@ struct MonitorAlertFeatureStrings {
         diskThreshold: "可用空間低於",
         batteryThreshold: "電量低於",
         cooldown: "提示間隔",
+        cooldown2: "2 分鐘",
         cooldown5: "5 分鐘",
         cooldown15: "15 分鐘",
         cooldown30: "30 分鐘",

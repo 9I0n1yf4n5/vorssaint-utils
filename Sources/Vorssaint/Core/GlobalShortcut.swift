@@ -371,4 +371,31 @@ enum GlobalShortcutRole: CaseIterable, Identifiable {
             candidate != role && candidate.savedShortcut == shortcut
         }
     }
+
+    /// The defaults keys that must ALL be true for this role's shortcut to be
+    /// registered. Some shortcuts gate on their own toggle, some follow the
+    /// feature switch, and the clipboard needs both the feature and its
+    /// shortcut toggle.
+    var requiredEnableKeys: [String] {
+        switch self {
+        case .keepAwake: return [DefaultsKey.hotkeyEnabled]
+        case .shelf: return [DefaultsKey.shelfEnabled, DefaultsKey.shelfShortcutEnabled]
+        case .switcher, .switcherWindow: return [DefaultsKey.switcherEnabled]
+        case .clipboard: return [DefaultsKey.clipboardHistoryEnabled,
+                                 DefaultsKey.clipboardHistoryShortcutEnabled]
+        case .soundOutputSwitcher: return [DefaultsKey.soundOutputSwitcherEnabled]
+        case .pastePlain: return [DefaultsKey.pastePlainEnabled]
+        case .colorPicker: return [DefaultsKey.colorPickerShortcutEnabled]
+        case .screenOCR: return [DefaultsKey.screenOCRShortcutEnabled]
+        case .micMute: return [DefaultsKey.micMuteShortcutEnabled]
+        case .quickLauncher: return [DefaultsKey.quickLauncherShortcutEnabled]
+        }
+    }
+
+    /// Roles whose shortcut is live given a defaults reader, for the keyboard
+    /// shortcuts overview page. Injected reader so the harness can test the
+    /// gating without touching real defaults.
+    static func activeRoles(isOn: (String) -> Bool) -> [GlobalShortcutRole] {
+        allCases.filter { role in role.requiredEnableKeys.allSatisfy(isOn) }
+    }
 }

@@ -214,6 +214,27 @@ enum SwitcherSupport {
             .map { $0 }
     }
 
+    /// Least-recently-used entries to evict until the cache's total bytes fit
+    /// the budget, never counting ids the caller is actively refreshing. Big
+    /// thumbnails (large windows on Retina screens) would otherwise let a
+    /// count-limited cache hold far more memory than intended.
+    static func cacheByteBudgetVictims(sizes: [CGWindowID: Int],
+                                       active: Set<CGWindowID>,
+                                       lastTouched: [CGWindowID: TimeInterval],
+                                       budget: Int) -> [CGWindowID] {
+        var total = sizes.values.reduce(0, +)
+        guard total > budget else { return [] }
+        var victims: [CGWindowID] = []
+        let evictable = sizes.keys.filter { !active.contains($0) }
+            .sorted { (lastTouched[$0] ?? 0) < (lastTouched[$1] ?? 0) }
+        for id in evictable {
+            guard total > budget else { break }
+            total -= sizes[id] ?? 0
+            victims.append(id)
+        }
+        return victims
+    }
+
     static func shouldNavigateBackwardOnShiftPress(shiftIsNavigationModifier: Bool,
                                                    wasShiftHeld: Bool,
                                                    isShiftHeld: Bool) -> Bool {

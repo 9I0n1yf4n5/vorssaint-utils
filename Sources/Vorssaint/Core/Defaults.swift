@@ -37,7 +37,9 @@ enum DefaultsKey {
     static let switcherShowWindowlessFinder = "switcherShowWindowlessFinder"
     static let dockPreviewEnabled = "dockPreviewEnabled"
     static let dockClickMinimize = "dockClickMinimize"    // click the active app's Dock icon to minimize its windows
-    static let middleClickEnabled = "middleClickEnabled"  // three-finger PHYSICAL click on the trackpad acts as a middle click (no tap mode, owner decision)
+    static let dockClickCycleWindows = "dockClickCycleWindows" // click the active app's Dock icon to cycle through its windows
+    static let middleClickEnabled = "middleClickEnabled"  // three-finger PHYSICAL click on the trackpad acts as a middle click
+    static let middleClickTapFingers = "middleClickTapFingers"  // 0 = off (default); 3 or 4 = a light tap with that many fingers also middle-clicks (issue #161)
     static let previewSize = "previewSize"                // app switcher + dock preview thumbnail size
     static let autoCheckUpdates = "autoCheckUpdates"
     static let releaseNotesOnUpdate = "releaseNotesOnUpdate" // show What's New after an update
@@ -56,6 +58,7 @@ enum DefaultsKey {
     static let shelfShortcutEnabled = "shelfShortcutEnabled"
     static let shelfShortcut = "shelfShortcut"            // GlobalShortcut storage value
     static let shelfShakeToOpen = "shelfShakeToOpen"
+    static let shelfItems = "shelfItems"                  // Data: [ShelfPersistedItem] JSON
     static let urlCleanerEnabled = "urlCleanerEnabled"
     static let windowMaximizeEnabled = "windowMaximizeEnabled"
     static let keyboardDebounceEnabled = "keyboardDebounceEnabled"
@@ -102,6 +105,8 @@ enum DefaultsKey {
     static let menuBarPeripheralBattery = "menuBarPeripheralBattery"
     static let menuBarPower = "menuBarPower"
     static let menuBarPreset = "menuBarPreset"           // dense
+    static let menuBarMetricSpacing = "menuBarMetricSpacing" // standard | compact
+    static let menuBarHideIconWithMetrics = "menuBarHideIconWithMetrics" // glyph hides while metrics render in the main item
     static let menuBarMetricOrder = "menuBarMetricOrder" // comma-separated MenuBarMetric raw values
     static let menuBarCombineTemperatures = "menuBarCombineTemperatures" // usage/charge + temperature in one block when possible
     static let menuBarSeparateMetrics = "menuBarSeparateMetrics" // one status item per active metric
@@ -167,7 +172,9 @@ enum DefaultsKey {
     static let panelNetworkOrder = "panelNetworkOrder"
     static let panelDiskOrder = "panelDiskOrder"
     static let panelPowerOrder = "panelPowerOrder"
-    static let panelNavigationEnabled = "panelNavigationEnabled"
+    static let panelNavigationEnabled = "panelNavigationEnabled" // legacy: the panel always navigates by sections since 3.1.8
+    static let updateLastInstallFailure = "updateLastInstallFailure" // last installer step that failed (fail-copy etc.)
+    static let windowLayoutHiddenActions = "windowLayoutHiddenActions" // comma-separated action ids hidden from the grid
     static let panelCollapsedSections = "panelCollapsedSections"
     static let panelCollapsedResetVersion = "panelCollapsedResetVersion"
 
@@ -205,12 +212,14 @@ enum DefaultsKey {
     static let colorPickerShortcutEnabled = "colorPickerShortcutEnabled"
     static let colorPickerShortcut = "colorPickerShortcut"
     static let colorPickerFormat = "colorPickerFormat"       // hex | rgb | hsl | swiftui
+    static let colorPickerBareHex = "colorPickerBareHex"     // copy HEX without the leading #
     static let screenOCRShortcutEnabled = "screenOCRShortcutEnabled"
     static let screenOCRShortcut = "screenOCRShortcut"
     static let micMuteShortcutEnabled = "micMuteShortcutEnabled"
     static let micMuteShortcut = "micMuteShortcut"
     static let micMuteActive = "micMuteActive"               // mic muted by the app (survives relaunch)
     static let micMuteSavedVolume = "micMuteSavedVolume"     // input volume to restore on unmute
+    static let micMuteMenuBarIndicator = "micMuteMenuBarIndicator" // badge the status icon while muted
     static let quickLauncherShortcutEnabled = "quickLauncherShortcutEnabled"
     static let quickLauncherShortcut = "quickLauncherShortcut"
     static let quickLauncherItemOrder = "quickLauncherItemOrder"
@@ -259,7 +268,11 @@ enum DockPreviewIntroInfo {
 }
 
 enum SupportUpdateIntroInfo {
-    static var releaseVersion: String { AppInfo.version }
+    /// The single release whose first launch shows the support window (star,
+    /// follow, coffee). It used to track AppInfo.version, which re-showed the
+    /// ask on EVERY update; now a release only asks when this constant is
+    /// deliberately bumped to it. Bumped to 3.1.8 on the owner's call.
+    static let releaseVersion = "3.1.8"
 }
 
 enum KeepAwakeIconTint: String, CaseIterable, Identifiable {
@@ -313,6 +326,7 @@ enum Defaults {
     static let defaultKeyboardDebounceWindowMs = 5
     static let allowedKeyboardDebounceWindowRange = 0...500
     static let allowedMenuBarPresets = ["dense"]
+    static let allowedMenuBarMetricSpacings = ["standard", "compact"]
     static let defaultMenuBarMetricOrder = [
         "cpu", "cpuTemperature",
         "gpu", "gpuTemperature",
@@ -324,7 +338,7 @@ enum Defaults {
     static let allowedMenuBarMemoryStyles = ["dot", "percent", "both"]
     static let allowedPreviewSizes = ["normal", "large", "xlarge"]
     static let allowedClipboardHistoryLimits = [20, 50, 100]
-    static let allowedMonitorAlertCooldowns = [5, 15, 30, 60]
+    static let allowedMonitorAlertCooldowns = [2, 5, 15, 30, 60]
 
     static let registeredDefaults: [String: Any] = [
         DefaultsKey.clamshellPreferred: false,
@@ -346,7 +360,9 @@ enum Defaults {
         DefaultsKey.switcherShowWindowlessFinder: true,
         DefaultsKey.dockPreviewEnabled: false,
         DefaultsKey.dockClickMinimize: false,
+        DefaultsKey.dockClickCycleWindows: false,
         DefaultsKey.middleClickEnabled: false,
+        DefaultsKey.middleClickTapFingers: 0,
         DefaultsKey.previewSize: "normal",
         DefaultsKey.autoCheckUpdates: true,
         DefaultsKey.releaseNotesOnUpdate: true,
@@ -403,6 +419,9 @@ enum Defaults {
         DefaultsKey.menuBarDiskActivity: false,
         DefaultsKey.menuBarPeripheralBattery: false,
         DefaultsKey.menuBarPreset: "dense",
+        DefaultsKey.menuBarMetricSpacing: "compact",  // owner's call: compact by default in 3.1.8
+        DefaultsKey.menuBarHideIconWithMetrics: false,
+        DefaultsKey.windowLayoutHiddenActions: "",
         DefaultsKey.menuBarMetricOrder: defaultMenuBarMetricOrder.joined(separator: ","),
         DefaultsKey.menuBarCombineTemperatures: true,
         DefaultsKey.menuBarSeparateMetrics: false,
@@ -483,12 +502,14 @@ enum Defaults {
         DefaultsKey.colorPickerShortcutEnabled: false,
         DefaultsKey.colorPickerShortcut: GlobalShortcut.colorPickerDefault.storageValue,
         DefaultsKey.colorPickerFormat: "hex",
+        DefaultsKey.colorPickerBareHex: false,
         DefaultsKey.screenOCRShortcutEnabled: false,
         DefaultsKey.screenOCRShortcut: GlobalShortcut.screenOCRDefault.storageValue,
         DefaultsKey.micMuteShortcutEnabled: false,
         DefaultsKey.micMuteShortcut: GlobalShortcut.micMuteDefault.storageValue,
         DefaultsKey.micMuteActive: false,
         DefaultsKey.micMuteSavedVolume: 0.75,
+        DefaultsKey.micMuteMenuBarIndicator: true,  // owner's call: on by default in 3.1.8 (badge only shows while muted)
         DefaultsKey.quickLauncherShortcutEnabled: true,
         DefaultsKey.quickLauncherShortcut: GlobalShortcut.quickLauncherDefault.storageValue,
         DefaultsKey.quickLauncherHiddenItems: "",
@@ -569,6 +590,12 @@ enum Defaults {
         allowedMonitorIntervals.contains(seconds) ? seconds : 2
     }
 
+    /// Tap-to-middle-click accepts exactly three or four fingers; anything
+    /// else means the option is off.
+    static func sanitizedMiddleClickTapFingers(_ raw: Int) -> Int {
+        raw == 3 || raw == 4 ? raw : 0
+    }
+
     static func sanitizedKeyboardDebounceWindow(_ milliseconds: Int) -> Int {
         allowedKeyboardDebounceWindowRange.contains(milliseconds)
             ? milliseconds
@@ -577,6 +604,11 @@ enum Defaults {
 
     static func sanitizedMenuBarPreset(_ preset: String) -> String {
         allowedMenuBarPresets.contains(preset) ? preset : "dense"
+    }
+
+    static func sanitizedMenuBarMetricSpacing(_ spacing: String) -> String {
+        // Corrupt values fall back to the registered default (compact).
+        allowedMenuBarMetricSpacings.contains(spacing) ? spacing : "compact"
     }
 
     static func sanitizedMenuBarMetricOrder(_ raw: String) -> [String] {

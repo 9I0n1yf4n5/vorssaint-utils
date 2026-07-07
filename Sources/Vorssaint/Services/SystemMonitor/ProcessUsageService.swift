@@ -361,11 +361,32 @@ final class ProcessUsageService {
         cacheLock.unlock()
 
         let result = Shell.run("/bin/ps", ["-Aceo", "pid,rss,comm", "-m"])
-        // rss is reported in KiB.
+        // ps enumerates and ranks the candidates; rss (KiB) is only the
+        // fallback value. The figure shown is the kernel's physical
+        // footprint, the same one Activity Monitor's Memory column uses —
+        // rss counts shared and purgeable pages and over-reports (issue #174).
         let rows = result.status == 0
-            ? groupedByApp(parsePS(result.output, maxRows: rawProcessRowLimit(for: limit)) { (Double($0) ?? 0) * 1024 })
+            ? groupedByApp(parsePS(result.output, maxRows: rawProcessRowLimit(for: limit)) { (Double($0) ?? 0) * 1024 }
+                .map { row in
+                    guard let footprint = Self.physicalFootprint(of: row.pid) else { return row }
+                    return ProcessUsage(pid: row.pid, name: row.name, value: footprint)
+                })
             : nil
         return finishMemory(rows, limit: limit)
+    }
+
+    /// The kernel's physical memory footprint of a process, readable for any
+    /// process without special privileges. Returns nil when the process died
+    /// between the ps snapshot and this call.
+    private static func physicalFootprint(of pid: pid_t) -> Double? {
+        var info = rusage_info_current()
+        let status = withUnsafeMutablePointer(to: &info) { pointer in
+            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { rebound in
+                proc_pid_rusage(pid, RUSAGE_INFO_CURRENT, rebound)
+            }
+        }
+        guard status == 0, info.ri_phys_footprint > 0 else { return nil }
+        return Double(info.ri_phys_footprint)
     }
 
     /// Lines look like "  437  12.5 WindowServer" (value column varies).

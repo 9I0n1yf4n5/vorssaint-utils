@@ -37,13 +37,20 @@ enum ImageThumbnailer {
                                          isPlanar: false,
                                          colorSpaceName: .deviceRGB,
                                          bytesPerRow: 0,
-                                         bitsPerPixel: 0),
-              let context = NSGraphicsContext(bitmapImageRep: rep) else {
+                                         bitsPerPixel: 0) else {
             return nil
         }
 
+        // The rep's point size MUST be set before the context is created: the
+        // context takes its user-space scale from the rep at creation time.
+        // Created first, it maps one point to one pixel, and drawing into the
+        // pointSize rect fills only a quarter of a retina bitmap, which is why
+        // icons used to render at half their intended size.
         let logicalSize = NSSize(width: pointSize, height: pointSize)
         rep.size = logicalSize
+        guard let context = NSGraphicsContext(bitmapImageRep: rep) else {
+            return nil
+        }
 
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = context
