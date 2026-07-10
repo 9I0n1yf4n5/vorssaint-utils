@@ -58,6 +58,18 @@ struct SwitcherIconRowLayout: Equatable {
     static var padding: CGFloat { 20 * scale }
     static var spacing: CGFloat { 12 * scale }
     static var previewGap: CGFloat { 10 * scale }
+    static var simpleTitleHeight: CGFloat { 66 * scale }
+    static var simpleTitleGap: CGFloat { 10 * scale }
+    static var simpleTitleChipMaxWidth: CGFloat { 180 * scale }
+
+    /// App-only mode keeps the same icon and shortcut surfaces, but removes
+    /// the entire preview area so no blank space remains where captures were.
+    var simplePanelSize: CGSize {
+        CGSize(width: max(appRowSurfaceWidth, Self.hintBarWidth) + Self.padding * 2,
+               height: Self.simpleTitleHeight + Self.simpleTitleGap
+                        + Self.rowHeight + Self.hintGap + Self.hintHeight
+                        + Self.padding * 2)
+    }
 
     static let empty = SwitcherIconRowLayout(visibleIconCount: 1,
                                              appRowContentWidth: 0,
@@ -112,6 +124,20 @@ struct SwitcherShortcutHints: Equatable {
 enum SwitcherSupport {
     /// Grid resolution used to classify window captures.
     static let captureAlphaGridSize = 8
+
+    static func usesIconRowLayout(iconRowMode: Bool, simpleMode: Bool) -> Bool {
+        iconRowMode || simpleMode
+    }
+
+    static func capturesPreviews(simpleMode: Bool) -> Bool {
+        !simpleMode
+    }
+
+    static func needsScreenRecording(switcherEnabled: Bool,
+                                     simpleMode: Bool,
+                                     dockPreviewEnabled: Bool) -> Bool {
+        dockPreviewEnabled || (switcherEnabled && capturesPreviews(simpleMode: simpleMode))
+    }
 
     /// Downsamples a capture into a small alpha grid for classification.
     static func alphaGrid(of image: CGImage, gridSize: Int = captureAlphaGridSize) -> [Double]? {

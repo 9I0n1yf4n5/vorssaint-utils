@@ -76,6 +76,15 @@ struct WindowLayoutSettings: View {
                 actionRow(.rightTwoThirds)
             }
 
+            Section(text.sixths) {
+                actionRow(.topLeftSixth)
+                actionRow(.topCenterSixth)
+                actionRow(.topRightSixth)
+                actionRow(.bottomLeftSixth)
+                actionRow(.bottomCenterSixth)
+                actionRow(.bottomRightSixth)
+            }
+
             Section(text.corners) {
                 actionRow(.topLeft)
                 actionRow(.topRight)
@@ -124,6 +133,12 @@ struct WindowLayoutSettings: View {
         case .rightThird: return "rectangle.rightthird.inset.filled"
         case .leftTwoThirds: return "rectangle.leadinghalf.filled"
         case .rightTwoThirds: return "rectangle.trailinghalf.filled"
+        case .topLeftSixth: return "arrow.up.left"
+        case .topCenterSixth: return "arrow.up"
+        case .topRightSixth: return "arrow.up.right"
+        case .bottomLeftSixth: return "arrow.down.left"
+        case .bottomCenterSixth: return "arrow.down"
+        case .bottomRightSixth: return "arrow.down.right"
         case .topLeft: return "arrow.up.left"
         case .topRight: return "arrow.up.right"
         case .bottomLeft: return "arrow.down.left"
@@ -175,7 +190,11 @@ private struct WindowLayoutActionRow: View {
         self.symbol = symbol
         self.applyEnabled = applyEnabled
         self.shortcutEnabled = shortcutEnabled
-        _rawValue = AppStorage(wrappedValue: action.defaultShortcut.storageValue, action.shortcutKey)
+        _rawValue = AppStorage(
+            wrappedValue: action.defaultShortcut?.storageValue
+                ?? WindowLayoutAction.clearedShortcutStorageValue,
+            action.shortcutKey
+        )
     }
 
     var body: some View {
@@ -188,7 +207,9 @@ private struct WindowLayoutActionRow: View {
                 }
                 .disabled(!applyEnabled)
                 Spacer()
-                ShortcutRecorderButton(shortcut: shortcut ?? action.defaultShortcut,
+                ShortcutRecorderButton(shortcut: shortcut
+                                           ?? action.defaultShortcut
+                                           ?? .windowLayoutLeftDefault,
                                        isEnabled: shortcutEnabled,
                                        recordingTitle: l10n.s.shortcutRecording,
                                        emptyTitle: shortcut == nil ? l10n.s.shortcutNone : nil,
@@ -210,7 +231,8 @@ private struct WindowLayoutActionRow: View {
                 .help(l10n.s.shortcutClear)
                 .accessibilityLabel(l10n.s.shortcutClear)
                 Button(l10n.s.shortcutReset) {
-                    rawValue = action.defaultShortcut.storageValue
+                    rawValue = action.defaultShortcut?.storageValue
+                        ?? WindowLayoutAction.clearedShortcutStorageValue
                     errorText = nil
                     WindowLayoutService.shared.syncWithPreferences()
                 }

@@ -232,6 +232,8 @@ final class WindowLayoutService: ObservableObject {
         switch action {
         case .leftHalf, .rightHalf, .topHalf, .bottomHalf,
                 .leftThird, .centerThird, .rightThird, .leftTwoThirds, .rightTwoThirds,
+                .topLeftSixth, .topCenterSixth, .topRightSixth,
+                .bottomLeftSixth, .bottomCenterSixth, .bottomRightSixth,
                 .topLeft, .topRight, .bottomLeft, .bottomRight:
             return true
         default:

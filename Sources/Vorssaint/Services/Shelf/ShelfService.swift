@@ -75,6 +75,10 @@ final class ShelfService: ObservableObject {
     /// the whole selection out together.
     @Published private(set) var selection: Set<UUID> = []
     @Published private(set) var expandedBatches: Set<UUID> = []
+    /// Pinning is intentionally session-only: it means "keep this open while
+    /// I work", not "reopen a floating panel on every launch".
+    @Published private(set) var isPinned = false
+    @Published private(set) var automaticExclusions: [String] = []
 
     private var panel: NSPanel?
     private var hotKeyRef: EventHotKeyRef?
@@ -124,6 +128,7 @@ final class ShelfService: ObservableObject {
     /// count after this point; Dock stacks can publish the drag contents first.
     private var dragPasteboardBaseline = DragPasteboardSnapshot.empty
     private var dragBeganInDock = false
+    private var dragSourceBundleIdentifier: String?
     private var activeInternalDragIDs: [UUID] = []
     private var internalDragWasMerged = false
 
@@ -169,6 +174,8 @@ final class ShelfService: ObservableObject {
     private var restoreCompleted = false
 
     private init() {
+        automaticExclusions = Defaults.sanitizedBundleIdentifierList(
+            UserDefaults.standard.stringArray(forKey: DefaultsKey.shelfAutomaticExclusions) ?? [])
         restoreItems()
     }
 
@@ -195,6 +202,7 @@ final class ShelfService: ObservableObject {
     // MARK: - Lifecycle
 
     func syncWithPreferences() {
+        reloadAutomaticExclusions()
         if UserDefaults.standard.bool(forKey: DefaultsKey.shelfEnabled) {
             syncHotkey()
             syncDragMonitor()
@@ -205,6 +213,29 @@ final class ShelfService: ObservableObject {
             hideDocked()
         }
         syncDockedShelf()
+    }
+
+    func addAutomaticExclusion(_ bundleIdentifier: String) {
+        let updated = Defaults.sanitizedBundleIdentifierList(automaticExclusions + [bundleIdentifier])
+        guard updated != automaticExclusions else { return }
+        automaticExclusions = updated
+        UserDefaults.standard.set(updated, forKey: DefaultsKey.shelfAutomaticExclusions)
+    }
+
+    func removeAutomaticExclusion(_ bundleIdentifier: String) {
+        let updated = automaticExclusions.filter { $0 != bundleIdentifier }
+        guard updated != automaticExclusions else { return }
+        automaticExclusions = updated
+        UserDefaults.standard.set(updated, forKey: DefaultsKey.shelfAutomaticExclusions)
+    }
+
+    private func reloadAutomaticExclusions() {
+        let stored = UserDefaults.standard.stringArray(forKey: DefaultsKey.shelfAutomaticExclusions) ?? []
+        let sanitized = Defaults.sanitizedBundleIdentifierList(stored)
+        if stored != sanitized {
+            UserDefaults.standard.set(sanitized, forKey: DefaultsKey.shelfAutomaticExclusions)
+        }
+        if automaticExclusions != sanitized { automaticExclusions = sanitized }
     }
 
     /// Re-reads the sub-preferences that need the global drag monitor (shake to
@@ -289,6 +320,7 @@ final class ShelfService: ObservableObject {
                 // contents first.
                 self.dragPasteboardBaseline = self.dragPasteboardSnapshot()
                 self.dragBeganInDock = self.eventBelongsToDock(event)
+                self.dragSourceBundleIdentifier = self.sourceBundleIdentifier(for: event)
                 self.shakeSamples.removeAll()
             case .leftMouseUp:
                 self.endDockedDrag()
@@ -309,6 +341,7 @@ final class ShelfService: ObservableObject {
         if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
         mouseMonitor = nil
         shakeSamples.removeAll()
+        dragSourceBundleIdentifier = nil
         dockedWatchdog?.invalidate()
         dockedWatchdog = nil
         dockedEndWork?.cancel()
@@ -341,6 +374,7 @@ final class ShelfService: ObservableObject {
             // Only when content is actually being dragged — not when a window is
             // being moved (nothing droppable, so the shelf shouldn't appear).
             guard isContentDragActive() else { return }
+            guard automaticOpenAllowed else { return }
             lastSummon = t
             shakeSamples.removeAll()
             DispatchQueue.main.async { [weak self] in self?.summon() }
@@ -411,6 +445,28 @@ final class ShelfService: ObservableObject {
         return NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.apple.dock"
     }
 
+    private var automaticOpenAllowed: Bool {
+        ShelfInteractionSupport.allowsAutomaticOpen(
+            sourceBundleIdentifier: dragSourceBundleIdentifier,
+            excludedBundleIdentifiers: Set(automaticExclusions))
+    }
+
+    /// Global NSEvents sometimes expose the owning window directly and
+    /// sometimes only the foreground app. Prefer the concrete event owner,
+    /// then fall back to the foreground process so Finder and browsers remain
+    /// classifiable without Screen Recording.
+    private func sourceBundleIdentifier(for event: NSEvent) -> String? {
+        if event.windowNumber > 0,
+           let infos = CGWindowListCopyWindowInfo(.optionIncludingWindow,
+                                                  CGWindowID(event.windowNumber)) as? [[String: Any]],
+           let pidNumber = infos.first?[kCGWindowOwnerPID as String] as? NSNumber,
+           let bundleID = NSRunningApplication(processIdentifier: pid_t(pidNumber.int32Value))?.bundleIdentifier {
+            return bundleID
+        }
+        if dragBeganInDock { return "com.apple.dock" }
+        return NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    }
+
     // MARK: - Docked shelf (under the menu bar icon)
 
     /// True while the docked shelf should show its full card rather than the
@@ -434,7 +490,8 @@ final class ShelfService: ObservableObject {
     /// screen (shake or shortcut), that panel is the target and the docked one
     /// stays out of the way.
     private func handleDragForDock() {
-        guard dockedFeatureOn, !isVisible, !isInternalDragActive, isContentDragActive() else { return }
+        guard dockedFeatureOn, automaticOpenAllowed, !isVisible,
+              !isInternalDragActive, isContentDragActive() else { return }
         // Drag events still flowing means the drag is alive: a pending end
         // (queued by a mouse-up that turned out to start a new drag) is stale.
         dockedEndWork?.cancel()
@@ -753,6 +810,17 @@ final class ShelfService: ObservableObject {
         return result
     }
 
+    /// File actions use the current multi-selection when the clicked tile is
+    /// part of it; otherwise they stay scoped to that tile. Batches flatten to
+    /// their leaves just like an external drag.
+    func fileURLsForActions(startingAt item: Item) -> [URL] {
+        let candidates = selection.contains(item.id) ? selectedItems() : [item]
+        return dragItems(for: candidates).compactMap { entry in
+            guard case let .file(url) = entry.payload else { return nil }
+            return url
+        }
+    }
+
     func beginInternalDrag(ids: [UUID]) {
         activeInternalDragIDs = ids
         internalDragWasMerged = false
@@ -765,6 +833,43 @@ final class ShelfService: ObservableObject {
         }
         guard dropAccepted, !internalDragWasMerged else { return [] }
         return activeInternalDragIDs
+    }
+
+    /// Completes a tile drag in one place so removal, dismissal, pinning and
+    /// internal Shelf merges cannot drift apart across the AppKit views.
+    func completeInternalDrag(dropAccepted: Bool) {
+        let draggedIDs = finishInternalDrag(dropAccepted: dropAccepted)
+        endInteraction()
+        guard !draggedIDs.isEmpty else { return }
+
+        let defaults = UserDefaults.standard
+        if ShelfInteractionSupport.shouldRemoveAfterDrag(
+            dropAccepted: dropAccepted,
+            draggedItemCount: draggedIDs.count,
+            removeAfterDrop: defaults.bool(forKey: DefaultsKey.shelfRemoveAfterDrop)) {
+            removeItems(draggedIDs)
+        }
+        if ShelfInteractionSupport.shouldCloseAfterDrag(
+            dropAccepted: dropAccepted,
+            draggedItemCount: draggedIDs.count,
+            closeAfterDrop: defaults.bool(forKey: DefaultsKey.shelfCloseAfterDrop),
+            pinned: isPinned) {
+            if isVisible {
+                hide()
+            } else if dockedVisible {
+                collapseDocked()
+            }
+        }
+    }
+
+    /// Retaining a file in the Shelf after use must offer copy-only outside
+    /// the app; otherwise a destination may move it and leave a stale saved
+    /// URL. Internal drops remain moves so stacking still works naturally.
+    func sourceOperationMask(for context: NSDraggingContext) -> NSDragOperation {
+        if context == .withinApplication { return .move }
+        return UserDefaults.standard.bool(forKey: DefaultsKey.shelfRemoveAfterDrop)
+            ? [.copy, .move]
+            : .copy
     }
 
     var isInternalDragActive: Bool {
@@ -1366,6 +1471,16 @@ final class ShelfService: ObservableObject {
         isVisible ? hide() : summon()
     }
 
+    func togglePin() {
+        guard isVisible else { return }
+        isPinned.toggle()
+        if isPinned {
+            cancelAutoHide()
+        } else {
+            scheduleAutoHideIfIdle()
+        }
+    }
+
     /// Opens the classic shelf at the cursor. The shake and the shortcut mean
     /// "bring it to me, here", so they keep working exactly the same with the
     /// docked option on; the docked shelf just steps aside while this panel is
@@ -1383,6 +1498,7 @@ final class ShelfService: ObservableObject {
 
     func hide() {
         resetAutoHide()
+        isPinned = false
         panel?.orderOut(nil)
         scheduleDockedSync()
     }
@@ -1443,7 +1559,7 @@ final class ShelfService: ObservableObject {
     }
 
     private var shouldHoldOpen: Bool {
-        !items.isEmpty || pointerInsidePanel || dropTargeted || interactionDepth > 0
+        isPinned || !items.isEmpty || pointerInsidePanel || dropTargeted || interactionDepth > 0
     }
 
     private func scheduleAutoHideIfIdle() {

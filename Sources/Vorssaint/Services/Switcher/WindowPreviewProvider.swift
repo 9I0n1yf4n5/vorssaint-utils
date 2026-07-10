@@ -376,6 +376,9 @@ final class WindowPreviewProvider {
             NSWorkspace.shared.notificationCenter.removeObserver(activationToken)
         }
         activationToken = nil
+        pendingWarmPid = nil
+        warmTask?.cancel()
+        warmTask = nil
     }
 
     /// Waits for the stage/space transition to settle, then captures the

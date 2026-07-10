@@ -116,8 +116,20 @@ final class PastePlainService: ObservableObject {
             .intersection([.maskCommand, .maskAlternate, .maskShift, .maskControl])
         if held.isEmpty || attempt >= 100 {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
-                Self.postPasteShortcut()
-                completion()
+                let shortcut = GlobalShortcut.saved(for: DefaultsKey.pastePlainShortcut,
+                                                    fallback: .pastePlainDefault)
+                let mustReleaseHotkey = shortcut.isStandardPasteCommand
+                if mustReleaseHotkey {
+                    // Otherwise our global ⌘V catches the synthetic ⌘V below,
+                    // so the target app never receives a paste command.
+                    self.hotkey.unregister()
+                }
+                Self.postPasteShortcut {
+                    if mustReleaseHotkey {
+                        self.syncWithPreferences()
+                    }
+                    completion()
+                }
             }
             return
         }
@@ -155,7 +167,7 @@ final class PastePlainService: ObservableObject {
         }
     }
 
-    private static func postPasteShortcut() {
+    private static func postPasteShortcut(completion: @escaping () -> Void) {
         // No explicit event source: an event tied to the HID state inherits
         // whatever the hardware still reports, and right after the shortcut's
         // own keys that can re-poison the flags this method just waited out.
@@ -165,7 +177,10 @@ final class PastePlainService: ObservableObject {
               let keyUp = CGEvent(keyboardEventSource: nil,
                                   virtualKey: CGKeyCode(kVK_ANSI_V),
                                   keyDown: false)
-        else { return }
+        else {
+            completion()
+            return
+        }
         keyDown.flags = .maskCommand
         keyUp.flags = .maskCommand
         // No keyboardSetUnicodeString here: a forced character string on the
@@ -176,6 +191,7 @@ final class PastePlainService: ObservableObject {
         // equivalents delivered as a zero-length tap.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
             keyUp.post(tap: .cghidEventTap)
+            completion()
         }
     }
 }

@@ -74,6 +74,8 @@ struct MenuPanelView: View {
     @AppStorage(DefaultsKey.panelShowUtilities) private var showUtilities = true
     @AppStorage(DefaultsKey.panelShowControls) private var showControls = true
     @AppStorage(DefaultsKey.panelSectionOrder) private var sectionOrderRaw = ""
+    @AppStorage(DefaultsKey.cleanerBadgeSeen) private var cleanerBadgeSeen = false
+    @AppStorage(DefaultsKey.panelUtilityCleaner) private var cleanerRowVisible = true
     @State private var navigableContentHeight: CGFloat = 0
     @State private var metricContentHeight: CGFloat = 0
     @State private var updateBannerHeight: CGFloat = 0
@@ -303,6 +305,18 @@ struct MenuPanelView: View {
                 } label: {
                     Image(systemName: id.symbolName)
                         .font(.system(size: 13.5, weight: .semibold))
+                        .overlay(alignment: .topTrailing) {
+                            // Trail of the cleaner's red dot: it marks the
+                            // Utilities tab too, so the guidance starts on the
+                            // panel's first screen and not one click deep.
+                            if id == .utilities, !cleanerBadgeSeen, cleanerRowVisible {
+                                Circle()
+                                    .fill(Color.red)
+                                    .frame(width: 6, height: 6)
+                                    .offset(x: 5, y: -3)
+                                    .accessibilityHidden(true)
+                            }
+                        }
                         .frame(maxWidth: .infinity)
                         .frame(height: 30)
                         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -439,8 +453,9 @@ private struct MenuPanelHeader: View {
 private enum UtilityPanelItem: String, PanelOrderItem, Identifiable {
     // Case order IS the default panel order (PanelLayout.itemOrder falls back
     // to allCases): the quick panel leads because it is the fastest way into
-    // every other tool. Saved orders are untouched.
-    case quickLauncher, homebrew, media, clipboard, windowLayout, uninstaller, cleanURL,
+    // every other tool, and the cleaner comes right below it (owner's call).
+    // Saved orders are untouched.
+    case quickLauncher, cleaner, homebrew, media, clipboard, windowLayout, uninstaller, cleanURL,
          cleaning, screenOCR, colorPicker, micMute
 
     var id: String { rawValue }
@@ -450,6 +465,7 @@ struct UtilitiesSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var permissions = Permissions.shared
     @State private var showUninstaller = false
+    @State private var showCleanerPanel = false
     @State private var showURLCleaner = false
     @State private var showHomebrewPanel = false
     @State private var showMediaPanel = false
@@ -458,6 +474,8 @@ struct UtilitiesSection: View {
     @AppStorage(DefaultsKey.panelUtilityCleaning) private var showCleaning = true
     @AppStorage(DefaultsKey.panelUtilityURLCleaner) private var showCleanURL = true
     @AppStorage(DefaultsKey.panelUtilityUninstaller) private var showUninstallerAction = true
+    @AppStorage(DefaultsKey.panelUtilityCleaner) private var showCleanerAction = true
+    @AppStorage(DefaultsKey.cleanerBadgeSeen) private var cleanerBadgeSeen = false
     @AppStorage(DefaultsKey.panelUtilityHomebrew) private var showHomebrew = true
     @AppStorage(DefaultsKey.panelUtilityMedia) private var showMedia = true
     @AppStorage(DefaultsKey.panelUtilityClipboard) private var showClipboard = true
@@ -477,6 +495,7 @@ struct UtilitiesSection: View {
         PanelSection(.utilities, title: l10n.s.utilitiesSection, collapsible: collapsible,
                      supportsEditing: true,
                      editButtonVisible: !showUninstaller
+                        && !showCleanerPanel
                         && !showURLCleaner
                         && !showHomebrewPanel
                         && !showMediaPanel
@@ -486,6 +505,10 @@ struct UtilitiesSection: View {
             if showUninstaller {
                 PanelUninstallerView {
                     showUninstaller = false
+                }
+            } else if showCleanerPanel {
+                PanelCleanerView {
+                    showCleanerPanel = false
                 }
             } else if showURLCleaner {
                 PanelURLCleanerView {
@@ -527,33 +550,34 @@ struct UtilitiesSection: View {
         .onChange(of: showHomebrewPanel) { _, shown in
             if shown {
                 PanelInteractionState.shared.keepsPopoverOpen = true
-            } else if !showUninstaller && !showURLCleaner && !showMediaPanel && !showClipboardPanel && !showWindowLayoutPanel {
+            } else if !showUninstaller && !showCleanerPanel && !showURLCleaner && !showMediaPanel && !showClipboardPanel && !showWindowLayoutPanel {
                 PanelInteractionState.shared.keepsPopoverOpen = false
             }
         }
         .onChange(of: showMediaPanel) { _, shown in
             if shown {
                 PanelInteractionState.shared.keepsPopoverOpen = true
-            } else if !showUninstaller && !showURLCleaner && !showHomebrewPanel && !showClipboardPanel && !showWindowLayoutPanel {
+            } else if !showUninstaller && !showCleanerPanel && !showURLCleaner && !showHomebrewPanel && !showClipboardPanel && !showWindowLayoutPanel {
                 PanelInteractionState.shared.keepsPopoverOpen = false
             }
         }
         .onChange(of: showClipboardPanel) { _, shown in
             if shown {
                 PanelInteractionState.shared.keepsPopoverOpen = true
-            } else if !showUninstaller && !showURLCleaner && !showHomebrewPanel && !showMediaPanel && !showWindowLayoutPanel {
+            } else if !showUninstaller && !showCleanerPanel && !showURLCleaner && !showHomebrewPanel && !showMediaPanel && !showWindowLayoutPanel {
                 PanelInteractionState.shared.keepsPopoverOpen = false
             }
         }
         .onChange(of: showWindowLayoutPanel) { _, shown in
             if shown {
                 PanelInteractionState.shared.keepsPopoverOpen = true
-            } else if !showUninstaller && !showURLCleaner && !showHomebrewPanel && !showMediaPanel && !showClipboardPanel {
+            } else if !showUninstaller && !showCleanerPanel && !showURLCleaner && !showHomebrewPanel && !showMediaPanel && !showClipboardPanel {
                 PanelInteractionState.shared.keepsPopoverOpen = false
             }
         }
         .onDisappear {
             if !showUninstaller
+                && !showCleanerPanel
                 && !showURLCleaner
                 && !showHomebrewPanel
                 && !showMediaPanel
@@ -598,6 +622,7 @@ struct UtilitiesSection: View {
         case .clipboard: return showClipboard
         case .windowLayout: return showWindowLayout
         case .uninstaller: return showUninstallerAction
+        case .cleaner: return showCleanerAction
         case .cleanURL: return showCleanURL
         case .cleaning: return showCleaning
         case .screenOCR: return showScreenOCR
@@ -667,6 +692,18 @@ struct UtilitiesSection: View {
                                 action: {
                                     PanelInteractionState.shared.keepsPopoverOpen = true
                                     showUninstaller = true
+                                })
+        case .cleaner:
+            UtilityActionButton(title: l10n.s.cleanerName,
+                                caption: l10n.s.cleanerPanelCaption,
+                                systemImage: "sparkle",
+                                showsNewDot: !cleanerBadgeSeen,
+                                isEditing: editing,
+                                showsDragHandle: true,
+                                visibility: $showCleanerAction,
+                                action: {
+                                    PanelInteractionState.shared.keepsPopoverOpen = true
+                                    showCleanerPanel = true
                                 })
         case .cleanURL:
             UtilityActionButton(title: l10n.s.urlCleanerName,
@@ -777,6 +814,7 @@ struct UtilitiesSection: View {
         showClipboard = true
         showWindowLayout = true
         showUninstallerAction = true
+        showCleanerAction = true
         showCleanURL = true
         showCleaning = true
         showScreenOCR = true
@@ -792,7 +830,7 @@ struct UtilitiesSection: View {
 }
 
 private enum ControlPanelItem: String, PanelOrderItem, Identifiable {
-    case mouseScroll, switcher, cutPaste, autoQuit, shelf, windowMaximize, dockPreview, keyDebounce,
+    case mouseScroll, mouseNavigation, switcher, cutPaste, autoQuit, shelf, windowMaximize, dockPreview, keyDebounce,
          dockClick, dockClickCycle, middleClick
 
     var id: String { rawValue }
@@ -809,7 +847,7 @@ private enum ControlCategory: String, CaseIterable, Identifiable {
         switch item {
         case .switcher, .dockPreview, .dockClick, .dockClickCycle, .windowMaximize, .autoQuit:
             return .windows
-        case .mouseScroll, .middleClick, .keyDebounce:
+        case .mouseScroll, .mouseNavigation, .middleClick, .keyDebounce:
             return .inputDevices
         case .cutPaste, .shelf:
             return .files
@@ -830,8 +868,10 @@ struct QuickControlsSection: View {
     @ObservedObject private var middleClick = MiddleClickService.shared
     @ObservedObject private var shelf = ShelfService.shared
     @AppStorage(DefaultsKey.scrollInverterEnabled) private var scrollEnabled = false
+    @AppStorage(DefaultsKey.mouseNavigationEnabled) private var mouseNavigationEnabled = false
     @AppStorage(DefaultsKey.switcherEnabled) private var switcherEnabled = true
     @AppStorage(DefaultsKey.switcherIconRowMode) private var switcherIconRowMode = false
+    @AppStorage(DefaultsKey.switcherSimpleMode) private var switcherSimpleMode = false
     @AppStorage(DefaultsKey.dockPreviewEnabled) private var dockPreviewEnabled = false
     @AppStorage(DefaultsKey.finderCutPasteEnabled) private var cutPasteEnabled = false
     @AppStorage(DefaultsKey.autoQuitEnabled) private var autoQuitEnabled = false
@@ -843,6 +883,7 @@ struct QuickControlsSection: View {
     @AppStorage(DefaultsKey.dockClickCycleWindows) private var dockClickCycleEnabled = false
     @AppStorage(DefaultsKey.middleClickEnabled) private var middleClickEnabled = false
     @AppStorage(DefaultsKey.panelControlMouseScroll) private var showScroll = true
+    @AppStorage(DefaultsKey.panelControlMouseNavigation) private var showMouseNavigation = true
     @AppStorage(DefaultsKey.panelControlSwitcher) private var showSwitcher = true
     @AppStorage(DefaultsKey.panelControlDockPreview) private var showDockPreview = true
     @AppStorage(DefaultsKey.panelControlCutPaste) private var showCutPaste = true
@@ -953,6 +994,7 @@ struct QuickControlsSection: View {
     private func isEnabled(_ item: ControlPanelItem) -> Bool {
         switch item {
         case .mouseScroll: return scrollEnabled
+        case .mouseNavigation: return mouseNavigationEnabled
         case .switcher: return switcherEnabled
         case .cutPaste: return cutPasteEnabled
         case .autoQuit: return autoQuitEnabled
@@ -966,10 +1008,21 @@ struct QuickControlsSection: View {
         }
     }
 
+    /// The simple layout never captures the screen, so the panel must not
+    /// nag for Screen Recording while it is active (the Settings page
+    /// already follows the same rule).
+    private var switcherNeedsScreenRecording: Bool {
+        SwitcherSupport.needsScreenRecording(switcherEnabled: switcherEnabled,
+                                             simpleMode: switcherSimpleMode,
+                                             dockPreviewEnabled: false)
+    }
+
     private var switcherCaption: String {
         guard switcherEnabled else { return l10n.s.switcherEnableCaption }
         if !permissions.accessibility { return missingPermission(l10n.s.permissionAccessibility) }
-        if !permissions.screenRecording { return missingPermission(l10n.s.permissionScreenRecording) }
+        if switcherNeedsScreenRecording, !permissions.screenRecording {
+            return missingPermission(l10n.s.permissionScreenRecording)
+        }
         return l10n.s.switcherEnableCaption
     }
 
@@ -1011,6 +1064,7 @@ struct QuickControlsSection: View {
     private func isVisible(_ item: ControlPanelItem) -> Bool {
         switch item {
         case .mouseScroll: return showScroll
+        case .mouseNavigation: return showMouseNavigation
         case .switcher: return showSwitcher
         case .keyDebounce: return showKeyDebounce
         case .cutPaste: return showCutPaste
@@ -1042,6 +1096,22 @@ struct QuickControlsSection: View {
                     ScrollInverter.shared.syncWithPreferences()
                     requestAccessibilityIfNeeded(enabled)
                 }
+        case .mouseNavigation:
+            PanelToggleRow(title: l10n.s.mouseNavigationEnable,
+                           caption: caption(l10n.s.mouseNavigationCaption,
+                                            needsAccessibility: mouseNavigationEnabled),
+                           systemImage: "arrow.left.arrow.right",
+                           isOn: $mouseNavigationEnabled,
+                           isEditing: editing,
+                           showsDragHandle: true,
+                           visibility: $showMouseNavigation,
+                           needsAttention: mouseNavigationEnabled && !permissions.accessibility,
+                           permissionButtonTitle: l10n.s.permissionRequest,
+                           permissionAction: accessibilityPermissionAction(mouseNavigationEnabled))
+                .onChange(of: mouseNavigationEnabled) { _, enabled in
+                    MouseNavigationService.shared.syncWithPreferences()
+                    requestAccessibilityIfNeeded(enabled)
+                }
         case .switcher:
             VStack(alignment: .leading, spacing: 5) {
                 PanelToggleRow(title: l10n.s.switcherSection,
@@ -1051,7 +1121,8 @@ struct QuickControlsSection: View {
                                isEditing: editing,
                                showsDragHandle: true,
                                visibility: $showSwitcher,
-                               needsAttention: switcherEnabled && (!permissions.accessibility || !permissions.screenRecording),
+                               needsAttention: switcherEnabled && (!permissions.accessibility
+                                   || (switcherNeedsScreenRecording && !permissions.screenRecording)),
                                permissionButtonTitle: l10n.s.permissionRequest,
                                permissionAction: switcherPermissionAction)
                     .onChange(of: switcherEnabled) { _, enabled in
@@ -1059,7 +1130,7 @@ struct QuickControlsSection: View {
                         guard enabled else { return }
                         if !permissions.accessibility {
                             grantAccessibility()
-                        } else if !permissions.screenRecording {
+                        } else if switcherNeedsScreenRecording, !permissions.screenRecording {
                             grantScreenRecording()
                         }
                     }
@@ -1229,6 +1300,7 @@ struct QuickControlsSection: View {
         PanelLayout.resetItemOrder(key: DefaultsKey.panelControlOrder)
         controlOrderRaw = ""
         showScroll = true
+        showMouseNavigation = true
         showSwitcher = true
         showCutPaste = true
         showAutoQuit = true
@@ -1309,6 +1381,7 @@ struct QuickControlsSection: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.mini)
+                    .disabled(switcherSimpleMode)
                     .onChange(of: switcherIconRowMode) { _, _ in
                         AppSwitcher.shared.syncWithPreferences()
                     }
@@ -1328,7 +1401,7 @@ struct QuickControlsSection: View {
         if !permissions.accessibility {
             return { grantAccessibility() }
         }
-        if !permissions.screenRecording {
+        if switcherNeedsScreenRecording, !permissions.screenRecording {
             return { grantScreenRecording() }
         }
         return nil
@@ -1361,6 +1434,10 @@ private struct UtilityActionButton: View {
     let caption: String
     let systemImage: String
     var badge: String? = nil
+    /// Small red dot on the icon pointing people at a brand new feature.
+    /// Purely visual and one-shot: the caller stops passing true once the
+    /// feature was opened somewhere.
+    var showsNewDot = false
     var isEditing = false
     var showsDragHandle = false
     var visibility: Binding<Bool>? = nil
@@ -1402,6 +1479,15 @@ private struct UtilityActionButton: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(iconColor)
                 .frame(width: 22)
+                .overlay(alignment: .topTrailing) {
+                    if showsNewDot && !isEditing {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 7, height: 7)
+                            .offset(x: 2, y: -3)
+                            .accessibilityHidden(true)
+                    }
+                }
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 5) {
                     Text(title)
@@ -1470,6 +1556,7 @@ private struct UtilityActionButton: View {
         isEditing && visibility?.wrappedValue == false
     }
 }
+
 
 private struct PanelToggleRow: View {
     let title: String

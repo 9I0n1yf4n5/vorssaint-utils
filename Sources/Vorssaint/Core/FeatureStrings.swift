@@ -752,6 +752,7 @@ struct WindowLayoutFeatureStrings {
     let target: String
     let halves: String
     let thirds: String
+    let sixths: String
     let corners: String
     let other: String
     let leftHalf: String
@@ -763,6 +764,12 @@ struct WindowLayoutFeatureStrings {
     let rightThird: String
     let leftTwoThirds: String
     let rightTwoThirds: String
+    let topLeftSixth: String
+    let topCenterSixth: String
+    let topRightSixth: String
+    let bottomLeftSixth: String
+    let bottomCenterSixth: String
+    let bottomRightSixth: String
     let topLeft: String
     let topRight: String
     let bottomLeft: String
@@ -774,7 +781,7 @@ struct WindowLayoutFeatureStrings {
 
     static let enUS = WindowLayoutFeatureStrings(
         title: "Window layout",
-        caption: "Moves the active window to halves, thirds, corners, another display, center or the usable screen.",
+        caption: "Moves the active window to halves, thirds, sixths, corners, another display, center or the usable screen.",
         showInPanel: "Show in panel",
         shortcuts: "Shortcuts",
         shortcutsCaption: "Use global shortcuts to arrange the active window without opening the panel.",
@@ -788,6 +795,7 @@ struct WindowLayoutFeatureStrings {
         target: "Active window",
         halves: "Halves",
         thirds: "Thirds",
+        sixths: "Sixths",
         corners: "Corners",
         other: "Actions",
         leftHalf: "Left",
@@ -799,6 +807,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "Right 1/3",
         leftTwoThirds: "Left 2/3",
         rightTwoThirds: "Right 2/3",
+        topLeftSixth: "Top left 1/6",
+        topCenterSixth: "Top center 1/6",
+        topRightSixth: "Top right 1/6",
+        bottomLeftSixth: "Bottom left 1/6",
+        bottomCenterSixth: "Bottom center 1/6",
+        bottomRightSixth: "Bottom right 1/6",
         topLeft: "Top left",
         topRight: "Top right",
         bottomLeft: "Bottom left",
@@ -811,7 +825,7 @@ struct WindowLayoutFeatureStrings {
 
     static let ptBR = WindowLayoutFeatureStrings(
         title: "Layout de janelas",
-        caption: "Reposiciona a janela ativa em metades, terços, cantos, outro display, centro ou tela útil.",
+        caption: "Reposiciona a janela ativa em metades, terços, sextos, cantos, outro display, centro ou tela útil.",
         showInPanel: "Mostrar no painel",
         shortcuts: "Atalhos",
         shortcutsCaption: "Use atalhos globais para organizar a janela ativa sem abrir o painel.",
@@ -825,6 +839,7 @@ struct WindowLayoutFeatureStrings {
         target: "Janela ativa",
         halves: "Metades",
         thirds: "Terços",
+        sixths: "Sextos",
         corners: "Cantos",
         other: "Ações",
         leftHalf: "Esquerda",
@@ -836,6 +851,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "1/3 direita",
         leftTwoThirds: "2/3 esquerda",
         rightTwoThirds: "2/3 direita",
+        topLeftSixth: "1/6 topo esquerdo",
+        topCenterSixth: "1/6 topo central",
+        topRightSixth: "1/6 topo direito",
+        bottomLeftSixth: "1/6 base esquerda",
+        bottomCenterSixth: "1/6 base central",
+        bottomRightSixth: "1/6 base direita",
         topLeft: "Topo esquerdo",
         topRight: "Topo direito",
         bottomLeft: "Base esquerda",
@@ -848,7 +869,7 @@ struct WindowLayoutFeatureStrings {
 
     static let tr = WindowLayoutFeatureStrings(
         title: "Pencere yerleşimi",
-        caption: "Etkin pencereyi yarımlara, üçlü bölümlere, köşelere, başka ekrana, merkeze veya kullanılabilir ekrana taşır.",
+        caption: "Etkin pencereyi yarımlara, üçlü ve altılı bölümlere, köşelere, başka ekrana, merkeze veya kullanılabilir ekrana taşır.",
         showInPanel: "Panelde göster",
         shortcuts: "Kısayollar",
         shortcutsCaption: "Paneli açmadan etkin pencereyi düzenlemek için genel kısayollar kullan.",
@@ -862,6 +883,7 @@ struct WindowLayoutFeatureStrings {
         target: "Etkin pencere",
         halves: "Yarımlar",
         thirds: "Üçlüler",
+        sixths: "Altıda birler",
         corners: "Köşeler",
         other: "Eylemler",
         leftHalf: "Sol",
@@ -873,6 +895,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "Sağ 1/3",
         leftTwoThirds: "Sol 2/3",
         rightTwoThirds: "Sağ 2/3",
+        topLeftSixth: "Sol üst 1/6",
+        topCenterSixth: "Üst orta 1/6",
+        topRightSixth: "Sağ üst 1/6",
+        bottomLeftSixth: "Sol alt 1/6",
+        bottomCenterSixth: "Alt orta 1/6",
+        bottomRightSixth: "Sağ alt 1/6",
         topLeft: "Sol üst",
         topRight: "Sağ üst",
         bottomLeft: "Sol alt",
@@ -885,7 +913,7 @@ struct WindowLayoutFeatureStrings {
 
     static let ru = WindowLayoutFeatureStrings(
         title: "Раскладка окон",
-        caption: "Перемещает активное окно в половины, трети, углы, на другой дисплей, в центр или в полезную область экрана.",
+        caption: "Перемещает активное окно в половины, трети, шестые части, углы, на другой дисплей, в центр или в полезную область экрана.",
         showInPanel: "Показывать в панели",
         shortcuts: "Горячие клавиши",
         shortcutsCaption: "Используйте глобальные сочетания клавиш, чтобы раскладывать активное окно без открытия панели.",
@@ -899,6 +927,7 @@ struct WindowLayoutFeatureStrings {
         target: "Активное окно",
         halves: "Половины",
         thirds: "Трети",
+        sixths: "Шестые",
         corners: "Углы",
         other: "Действия",
         leftHalf: "Левая половина",
@@ -910,6 +939,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "Правая 1/3",
         leftTwoThirds: "Левые 2/3",
         rightTwoThirds: "Правые 2/3",
+        topLeftSixth: "1/6 слева сверху",
+        topCenterSixth: "1/6 сверху по центру",
+        topRightSixth: "1/6 справа сверху",
+        bottomLeftSixth: "1/6 слева снизу",
+        bottomCenterSixth: "1/6 снизу по центру",
+        bottomRightSixth: "1/6 справа снизу",
         topLeft: "Верхний левый угол",
         topRight: "Верхний правый угол",
         bottomLeft: "Нижний левый угол",
@@ -922,7 +957,7 @@ struct WindowLayoutFeatureStrings {
 
     static let es = WindowLayoutFeatureStrings(
         title: "Diseño de ventanas",
-        caption: "Mueve la ventana activa a mitades, tercios, esquinas, otra pantalla, el centro o el área útil.",
+        caption: "Mueve la ventana activa a mitades, tercios, sextos, esquinas, otra pantalla, el centro o el área útil.",
         showInPanel: "Mostrar en el panel",
         shortcuts: "Atajos",
         shortcutsCaption: "Usa atajos globales para organizar la ventana activa sin abrir el panel.",
@@ -936,6 +971,7 @@ struct WindowLayoutFeatureStrings {
         target: "Ventana activa",
         halves: "Mitades",
         thirds: "Tercios",
+        sixths: "Sextos",
         corners: "Esquinas",
         other: "Acciones",
         leftHalf: "Izquierda",
@@ -947,6 +983,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "1/3 derecha",
         leftTwoThirds: "2/3 izquierda",
         rightTwoThirds: "2/3 derecha",
+        topLeftSixth: "1/6 arriba izquierda",
+        topCenterSixth: "1/6 arriba centro",
+        topRightSixth: "1/6 arriba derecha",
+        bottomLeftSixth: "1/6 abajo izquierda",
+        bottomCenterSixth: "1/6 abajo centro",
+        bottomRightSixth: "1/6 abajo derecha",
         topLeft: "Arriba izquierda",
         topRight: "Arriba derecha",
         bottomLeft: "Abajo izquierda",
@@ -959,7 +1001,7 @@ struct WindowLayoutFeatureStrings {
 
     static let de = WindowLayoutFeatureStrings(
         title: "Fensterlayout",
-        caption: "Verschiebt das aktive Fenster in Hälften, Drittel, Ecken, auf ein anderes Display, in die Mitte oder auf die nutzbare Fläche.",
+        caption: "Verschiebt das aktive Fenster in Hälften, Drittel, Sechstel, Ecken, auf ein anderes Display, in die Mitte oder auf die nutzbare Fläche.",
         showInPanel: "Im Panel anzeigen",
         shortcuts: "Kurzbefehle",
         shortcutsCaption: "Nutze globale Kurzbefehle, um das aktive Fenster ohne Panel zu arrangieren.",
@@ -973,6 +1015,7 @@ struct WindowLayoutFeatureStrings {
         target: "Aktives Fenster",
         halves: "Hälften",
         thirds: "Drittel",
+        sixths: "Sechstel",
         corners: "Ecken",
         other: "Aktionen",
         leftHalf: "Links",
@@ -984,6 +1027,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "Rechtes 1/3",
         leftTwoThirds: "Linke 2/3",
         rightTwoThirds: "Rechte 2/3",
+        topLeftSixth: "1/6 oben links",
+        topCenterSixth: "1/6 oben mittig",
+        topRightSixth: "1/6 oben rechts",
+        bottomLeftSixth: "1/6 unten links",
+        bottomCenterSixth: "1/6 unten mittig",
+        bottomRightSixth: "1/6 unten rechts",
         topLeft: "Oben links",
         topRight: "Oben rechts",
         bottomLeft: "Unten links",
@@ -996,7 +1045,7 @@ struct WindowLayoutFeatureStrings {
 
     static let fr = WindowLayoutFeatureStrings(
         title: "Disposition des fenêtres",
-        caption: "Déplace la fenêtre active vers les moitiés, tiers, coins, un autre écran, le centre ou la zone utile.",
+        caption: "Déplace la fenêtre active vers les moitiés, tiers, sixièmes, coins, un autre écran, le centre ou la zone utile.",
         showInPanel: "Afficher dans le panneau",
         shortcuts: "Raccourcis",
         shortcutsCaption: "Utilisez des raccourcis globaux pour organiser la fenêtre active sans ouvrir le panneau.",
@@ -1010,6 +1059,7 @@ struct WindowLayoutFeatureStrings {
         target: "Fenêtre active",
         halves: "Moitiés",
         thirds: "Tiers",
+        sixths: "Sixièmes",
         corners: "Coins",
         other: "Actions",
         leftHalf: "Gauche",
@@ -1021,6 +1071,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "1/3 droite",
         leftTwoThirds: "2/3 gauche",
         rightTwoThirds: "2/3 droite",
+        topLeftSixth: "1/6 en haut à gauche",
+        topCenterSixth: "1/6 en haut au centre",
+        topRightSixth: "1/6 en haut à droite",
+        bottomLeftSixth: "1/6 en bas à gauche",
+        bottomCenterSixth: "1/6 en bas au centre",
+        bottomRightSixth: "1/6 en bas à droite",
         topLeft: "Haut gauche",
         topRight: "Haut droite",
         bottomLeft: "Bas gauche",
@@ -1033,7 +1089,7 @@ struct WindowLayoutFeatureStrings {
 
     static let it = WindowLayoutFeatureStrings(
         title: "Layout finestre",
-        caption: "Sposta la finestra attiva in metà, terzi, angoli, su un altro display, al centro o nell'area utilizzabile.",
+        caption: "Sposta la finestra attiva in metà, terzi, sesti, angoli, su un altro display, al centro o nell'area utilizzabile.",
         showInPanel: "Mostra nel pannello",
         shortcuts: "Scorciatoie",
         shortcutsCaption: "Usa scorciatoie globali per organizzare la finestra attiva senza aprire il pannello.",
@@ -1047,6 +1103,7 @@ struct WindowLayoutFeatureStrings {
         target: "Finestra attiva",
         halves: "Metà",
         thirds: "Terzi",
+        sixths: "Sesti",
         corners: "Angoli",
         other: "Azioni",
         leftHalf: "Sinistra",
@@ -1058,6 +1115,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "1/3 destra",
         leftTwoThirds: "2/3 sinistra",
         rightTwoThirds: "2/3 destra",
+        topLeftSixth: "1/6 in alto a sinistra",
+        topCenterSixth: "1/6 in alto al centro",
+        topRightSixth: "1/6 in alto a destra",
+        bottomLeftSixth: "1/6 in basso a sinistra",
+        bottomCenterSixth: "1/6 in basso al centro",
+        bottomRightSixth: "1/6 in basso a destra",
         topLeft: "Alto sinistra",
         topRight: "Alto destra",
         bottomLeft: "Basso sinistra",
@@ -1070,7 +1133,7 @@ struct WindowLayoutFeatureStrings {
 
     static let ja = WindowLayoutFeatureStrings(
         title: "ウインドウ配置",
-        caption: "アクティブなウインドウを半分、3分割、四隅、別のディスプレイ、中央、または作業領域に移動します。",
+        caption: "アクティブなウインドウを半分、3分割、6分割、四隅、別のディスプレイ、中央、または作業領域に移動します。",
         showInPanel: "パネルに表示",
         shortcuts: "ショートカット",
         shortcutsCaption: "パネルを開かずにグローバルショートカットでアクティブなウインドウを配置します。",
@@ -1084,6 +1147,7 @@ struct WindowLayoutFeatureStrings {
         target: "アクティブなウインドウ",
         halves: "半分",
         thirds: "3分割",
+        sixths: "6分割",
         corners: "四隅",
         other: "操作",
         leftHalf: "左",
@@ -1095,6 +1159,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "右 1/3",
         leftTwoThirds: "左 2/3",
         rightTwoThirds: "右 2/3",
+        topLeftSixth: "左上 1/6",
+        topCenterSixth: "上中央 1/6",
+        topRightSixth: "右上 1/6",
+        bottomLeftSixth: "左下 1/6",
+        bottomCenterSixth: "下中央 1/6",
+        bottomRightSixth: "右下 1/6",
         topLeft: "左上",
         topRight: "右上",
         bottomLeft: "左下",
@@ -1107,7 +1177,7 @@ struct WindowLayoutFeatureStrings {
 
     static let zhHans = WindowLayoutFeatureStrings(
         title: "窗口布局",
-        caption: "将当前窗口移动到半屏、三分屏、角落、另一台显示器、居中位置或可用屏幕区域。",
+        caption: "将当前窗口移动到半屏、三分屏、六分屏、角落、另一台显示器、居中位置或可用屏幕区域。",
         showInPanel: "在面板中显示",
         shortcuts: "快捷键",
         shortcutsCaption: "使用全局快捷键整理当前窗口，无需打开面板。",
@@ -1121,6 +1191,7 @@ struct WindowLayoutFeatureStrings {
         target: "当前窗口",
         halves: "半屏",
         thirds: "三分屏",
+        sixths: "六分屏",
         corners: "角落",
         other: "操作",
         leftHalf: "左半屏",
@@ -1132,6 +1203,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "右侧 1/3",
         leftTwoThirds: "左侧 2/3",
         rightTwoThirds: "右侧 2/3",
+        topLeftSixth: "左上 1/6",
+        topCenterSixth: "上中 1/6",
+        topRightSixth: "右上 1/6",
+        bottomLeftSixth: "左下 1/6",
+        bottomCenterSixth: "下中 1/6",
+        bottomRightSixth: "右下 1/6",
         topLeft: "左上角",
         topRight: "右上角",
         bottomLeft: "左下角",
@@ -1144,7 +1221,7 @@ struct WindowLayoutFeatureStrings {
 
     static let zhTW = WindowLayoutFeatureStrings(
         title: "視窗排列",
-        caption: "將目前視窗移到半邊、三等分、角落、另一台顯示器、置中位置或可用螢幕範圍。",
+        caption: "將目前視窗移到半邊、三等分、六等分、角落、另一台顯示器、置中位置或可用螢幕範圍。",
         showInPanel: "在面板中顯示",
         shortcuts: "快速鍵",
         shortcutsCaption: "使用全域快速鍵整理目前視窗，不需要打開面板。",
@@ -1158,6 +1235,7 @@ struct WindowLayoutFeatureStrings {
         target: "目前視窗",
         halves: "半邊",
         thirds: "三等分",
+        sixths: "六等分",
         corners: "角落",
         other: "其他操作",
         leftHalf: "左半邊",
@@ -1169,6 +1247,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "右側 1/3",
         leftTwoThirds: "左側 2/3",
         rightTwoThirds: "右側 2/3",
+        topLeftSixth: "左上 1/6",
+        topCenterSixth: "上方中央 1/6",
+        topRightSixth: "右上 1/6",
+        bottomLeftSixth: "左下 1/6",
+        bottomCenterSixth: "下方中央 1/6",
+        bottomRightSixth: "右下 1/6",
         topLeft: "左上角",
         topRight: "右上角",
         bottomLeft: "左下角",
@@ -1181,7 +1265,7 @@ struct WindowLayoutFeatureStrings {
 
     static let zhHK = WindowLayoutFeatureStrings(
         title: "視窗排列",
-        caption: "將目前視窗移到半邊、三等分、角落、另一部顯示器、置中位置或可用螢幕範圍。",
+        caption: "將目前視窗移到半邊、三等分、六等分、角落、另一部顯示器、置中位置或可用螢幕範圍。",
         showInPanel: "在面板中顯示",
         shortcuts: "快捷鍵",
         shortcutsCaption: "使用全域快捷鍵整理目前視窗，毋須打開面板。",
@@ -1195,6 +1279,7 @@ struct WindowLayoutFeatureStrings {
         target: "目前視窗",
         halves: "半邊",
         thirds: "三等分",
+        sixths: "六等分",
         corners: "角落",
         other: "其他操作",
         leftHalf: "左半邊",
@@ -1206,6 +1291,12 @@ struct WindowLayoutFeatureStrings {
         rightThird: "右側 1/3",
         leftTwoThirds: "左側 2/3",
         rightTwoThirds: "右側 2/3",
+        topLeftSixth: "左上 1/6",
+        topCenterSixth: "上方中央 1/6",
+        topRightSixth: "右上 1/6",
+        bottomLeftSixth: "左下 1/6",
+        bottomCenterSixth: "下方中央 1/6",
+        bottomRightSixth: "右下 1/6",
         topLeft: "左上角",
         topRight: "右上角",
         bottomLeft: "左下角",

@@ -25,6 +25,7 @@ struct ShelfView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var targeted = false
     @State private var clearButtonHovered = false
+    @State private var pinButtonHovered = false
     @State private var closeButtonHovered = false
 
     private static let dropTypes: [UTType] = [.fileURL, .image, .url, .text, .plainText]
@@ -112,13 +113,39 @@ struct ShelfView: View {
             .contentShape(Rectangle())
             .overlay(WindowMoveHandle())
 
+            if !brandWatermark { pinButton }
             closeButton
         }
     }
 
     private var topMoveHandle: some View {
         WindowMoveHandle(acceptsDrops: true)
-            .frame(width: Self.panelWidth - 58, height: 55)
+            .frame(width: Self.panelWidth - (brandWatermark ? 58 : 96), height: 55)
+    }
+
+    private var pinButton: some View {
+        Button { shelf.togglePin() } label: {
+            Image(systemName: shelf.isPinned ? "pin.fill" : "pin")
+                .font(.system(size: 12, weight: .semibold))
+                .frame(width: 30, height: 30)
+                .background(
+                    Circle().fill(shelf.isPinned
+                                  ? Color.accentColor.opacity(pinButtonHovered ? 0.30 : 0.20)
+                                  : Color.white.opacity(pinButtonHovered ? 0.18 : 0.11))
+                )
+                .overlay(
+                    Circle().strokeBorder(shelf.isPinned
+                                          ? Color.accentColor.opacity(0.65)
+                                          : Color.white.opacity(pinButtonHovered ? 0.75 : 0.32),
+                                          lineWidth: 1)
+                )
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(shelf.isPinned ? Color.accentColor : Color.secondary)
+        .onHover { pinButtonHovered = $0 }
+        .help(shelf.isPinned ? l10n.s.shelfUnpin : l10n.s.shelfPin)
+        .accessibilityLabel(shelf.isPinned ? l10n.s.shelfUnpin : l10n.s.shelfPin)
     }
 
     private var closeButton: some View {

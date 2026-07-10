@@ -12,14 +12,10 @@ import Foundation
 /// panel reserves for HDR. Blacks stay black and contrast is preserved, since
 /// multiplication only scales.
 enum ExtraBrightnessSupport {
-    /// The largest multiplier worth applying: XDR panels top out near twice
-    /// the SDR reference, and pushing past the real headroom only clips.
-    static let factorCap: Double = 2.0
-
     /// The overlay needs to show extended range content before macOS engages
     /// the panel's headroom, so the first frame renders this small boost;
     /// polling then ramps to the real factor as the headroom rises.
-    static let engagementFactor: Double = 1.12
+    static let engagementFactor: Double = 1.10
 
     /// The panel has real headroom past this (values near 1 are noise).
     static let headroomThreshold: Double = 1.05
@@ -69,27 +65,53 @@ enum ExtraBrightnessSupport {
         return potentialEDR > capabilityFloor || isXDRPanelName(localizedName)
     }
 
+    /// The 2021 and 2023 M1/M2 MacBook Pro panels reference 500 nits in SDR;
+    /// the M3 generation onwards references 600 (the reference is the panel's
+    /// 1600 nit peak over its SDR maximum). The pair per generation is
+    /// (referenceEDR, bonus): the multiplier tops out at 1 + bonus, chosen a
+    /// touch below the ceiling proven sustainable in the field. Asking for
+    /// more looks brighter for an instant, but exceeds what the panel holds
+    /// across a full screen and macOS answers by clawing the headroom back,
+    /// which visibly kills the whole boost. Unknown (future) models get the
+    /// conservative 600 nit curve.
+    static let sdr500nitModels: Set<String> = [
+        "MacBookPro18,1", "MacBookPro18,2", "MacBookPro18,3", "MacBookPro18,4",
+        "Mac14,5", "Mac14,6", "Mac14,9", "Mac14,10",
+    ]
+
+    static func panelReference(model: String?) -> (referenceEDR: Double, bonus: Double) {
+        if let model, sdr500nitModels.contains(model) { return (3.2, 0.58) }
+        return (2.66, 0.48)
+    }
+
     /// How strong the multiplier is for a user level of 0...1 given the
-    /// display's currently available EDR headroom. Level 0 means no boost;
-    /// level 1 uses all the headroom the panel reports, capped for sanity.
-    static func boostFactor(level: Double, maxEDR: Double) -> Double {
+    /// panel's currently available EDR headroom. Level 0 means no boost;
+    /// level 1 applies the panel's full sustainable bonus, scaled down
+    /// proportionally while macOS grants less headroom than the reference
+    /// (thermals, low battery, bright ambient light).
+    static func boostFactor(level: Double, maxEDR: Double,
+                            reference: (referenceEDR: Double, bonus: Double)) -> Double {
         let clampedLevel = min(max(level, 0), 1)
-        let usableHeadroom = min(max(maxEDR, 1.0), factorCap)
-        return 1 + clampedLevel * (usableHeadroom - 1)
+        let granted = min(max(maxEDR, 0) / reference.referenceEDR, 1.0)
+        return 1 + clampedLevel * reference.bonus * granted
     }
 
     /// The factor the overlay should render right now: before the panel
     /// engages its headroom only the small engagement boost is shown (enough
     /// extended range content to make macOS turn the headroom on), afterwards
-    /// the level maps into whatever headroom is actually available. A panel
+    /// the level maps into whatever headroom is actually available, never
+    /// past it (a multiplier above the granted headroom only clips). A panel
     /// whose current mode reports no potential headroom at all (a reference
     /// preset without HDR) gets no boost attempt: the nudge could never
     /// engage anything and would only clip the brightest tones.
-    static func renderFactor(level: Double, currentEDR: Double, potentialEDR: Double) -> Double {
+    static func renderFactor(level: Double, currentEDR: Double, potentialEDR: Double,
+                             reference: (referenceEDR: Double, bonus: Double)) -> Double {
         guard potentialEDR > headroomThreshold else { return 1.0 }
         guard currentEDR > headroomThreshold else {
-            return min(engagementFactor, max(boostFactor(level: level, maxEDR: factorCap), 1.0))
+            return min(engagementFactor,
+                       boostFactor(level: level, maxEDR: reference.referenceEDR, reference: reference))
         }
-        return boostFactor(level: level, maxEDR: currentEDR)
+        return min(boostFactor(level: level, maxEDR: currentEDR, reference: reference),
+                   max(currentEDR, 1.0))
     }
 }

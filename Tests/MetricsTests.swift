@@ -184,6 +184,15 @@ struct MetricsTests {
                          "\(language.rawValue) paste-selected button format")
             expectFormat(clipboardStrings.copySelectedFormat, ["d"],
                          "\(language.rawValue) copy-selected button format")
+            let layoutStrings = FeatureStrings.windowLayout(language)
+            expect(!layoutStrings.sixths.isEmpty
+                   && !layoutStrings.topLeftSixth.isEmpty
+                   && !layoutStrings.topCenterSixth.isEmpty
+                   && !layoutStrings.topRightSixth.isEmpty
+                   && !layoutStrings.bottomLeftSixth.isEmpty
+                   && !layoutStrings.bottomCenterSixth.isEmpty
+                   && !layoutStrings.bottomRightSixth.isEmpty,
+                   "\(language.rawValue) window sixth layout labels are localized")
             let alertStrings = FeatureStrings.monitorAlerts(language)
             expectFormat(alertStrings.cpuBodyFormat, ["d"], "\(language.rawValue) CPU alert format")
             expectFormat(alertStrings.cpuTemperatureBodyFormat, ["d"],
@@ -549,6 +558,21 @@ struct MetricsTests {
             secondsSinceLastGesturePhase: nil
         ), "scroll inverter flips counted wheel events when no gesture was ever seen")
 
+        expect(MouseNavigationSupport.direction(
+            forButtonNumber: MouseNavigationSupport.backButtonNumber) == .back,
+               "the first standard mouse side button maps to Back")
+        expect(MouseNavigationSupport.direction(
+            forButtonNumber: MouseNavigationSupport.forwardButtonNumber) == .forward,
+               "the second standard mouse side button maps to Forward")
+        expect(MouseNavigationSupport.direction(forButtonNumber: 2) == nil,
+               "the middle mouse button is never consumed as navigation")
+        expect(MouseNavigationSupport.direction(forButtonNumber: 9) == nil,
+               "unrelated extra mouse buttons pass through")
+        expect(MouseNavigationSupport.commandCharacter(for: .back) == "[",
+               "Back uses the standard Command left bracket menu command")
+        expect(MouseNavigationSupport.commandCharacter(for: .forward) == "]",
+               "Forward uses the standard Command right bracket menu command")
+
         // MARK: Smooth scrolling
 
         expect(SmoothScrollSupport.remaining(afterTicks: 1, step: 40, current: 0) == 40,
@@ -765,6 +789,23 @@ struct MetricsTests {
         }
         expect(registeredDefaults[DefaultsKey.switcherIconRowMode] as? Bool == false,
                "App Switcher icon-row mode is optional")
+        expect(registeredDefaults[DefaultsKey.switcherSimpleMode] as? Bool == false,
+               "App Switcher simple mode preserves previews until requested")
+        expect(SwitcherSupport.usesIconRowLayout(iconRowMode: false, simpleMode: true),
+               "App Switcher simple mode always uses the app icon row")
+        expect(!SwitcherSupport.capturesPreviews(simpleMode: true),
+               "App Switcher simple mode never captures window previews")
+        expect(!SwitcherSupport.needsScreenRecording(switcherEnabled: true,
+                                                      simpleMode: true,
+                                                      dockPreviewEnabled: false),
+               "App Switcher simple mode alone does not request Screen Recording")
+        expect(SwitcherSupport.needsScreenRecording(switcherEnabled: true,
+                                                    simpleMode: false,
+                                                    dockPreviewEnabled: false)
+               && SwitcherSupport.needsScreenRecording(switcherEnabled: false,
+                                                        simpleMode: true,
+                                                        dockPreviewEnabled: true),
+               "window previews still request Screen Recording where needed")
         expect(registeredDefaults[DefaultsKey.switcherShowWindowlessFinder] as? Bool == true,
                "Finder without windows stays visible in the switcher by default")
         expect(registeredDefaults[DefaultsKey.dockPreviewEnabled] as? Bool == false,
@@ -776,13 +817,13 @@ struct MetricsTests {
         expect(registeredDefaults[DefaultsKey.updateShowcaseMediaOverride] as? String == "",
                "update showcase media override is empty by default")
         expect(SupportUpdateIntroInfo.releaseVersion == "3.1.8",
-               "support prompt is deliberately pinned to 3.1.8 (owner's call); 3.1.9 and the 3.1.10 bugfix do not ask again")
+               "support prompt is deliberately pinned to 3.1.8 (owner's call); 3.1.9 through 3.1.11 do not ask again")
         // AppInfo.version falls back to "dev" in this bare harness, so read
         // the plist the shipped app will actually carry. The pin is a
         // per-release decision: this check fails on every version bump so the
         // decision above is made consciously, never by omission.
         let plistVersion = (NSDictionary(contentsOfFile: "Resources/Info.plist")?["CFBundleShortVersionString"] as? String) ?? ""
-        expect(plistVersion == "3.1.10",
+        expect(plistVersion == "3.1.11",
                "bumping the app version requires re-deciding the support prompt pin above")
         expect(registeredDefaults[DefaultsKey.mixerLowerVolumeOnHeadphonesDisconnect] as? Bool == false,
                "headphone disconnect volume lowering is opt-in")
@@ -799,11 +840,27 @@ struct MetricsTests {
                "shelf shortcut defaults to Ctrl+Opt+Cmd+D")
         expect(registeredDefaults[DefaultsKey.shelfShakeToOpen] as? Bool == true,
                "shelf shake opens by default once shelf is enabled")
+        expect(registeredDefaults[DefaultsKey.shelfCloseAfterDrop] as? Bool == false,
+               "closing after a drop is new behavior and must arrive off in an update")
+        expect(registeredDefaults[DefaultsKey.shelfRemoveAfterDrop] as? Bool == true,
+               "shelf removes accepted items after a drop by default")
+        expect((registeredDefaults[DefaultsKey.shelfAutomaticExclusions] as? [String])?.isEmpty == true,
+               "shelf automatic exclusions start empty")
+        expect(registeredDefaults[DefaultsKey.mouseNavigationEnabled] as? Bool == false,
+               "mouse side-button navigation is opt-in")
         expect(registeredDefaults[DefaultsKey.clipboardHistoryShortcutEnabled] as? Bool == true,
                "clipboard history shortcut is ready when clipboard history is enabled")
         expect(registeredDefaults[DefaultsKey.clipboardHistoryShortcut] as? String
                == GlobalShortcut.clipboardDefault.storageValue,
                "clipboard history shortcut defaults to Ctrl+Opt+Cmd+V")
+        expect(GlobalShortcut(keyCode: Int64(kVK_ANSI_V), modifiers: [.command])
+                   .isStandardPasteCommand,
+               "Cmd+V is recognized when plain-text paste must release its own hotkey")
+        expect(!GlobalShortcut.pastePlainDefault.isStandardPasteCommand,
+               "the default plain-text paste shortcut does not intercept synthesized Cmd+V")
+        expect(!GlobalShortcut(keyCode: Int64(kVK_ANSI_C), modifiers: [.command])
+                   .isStandardPasteCommand,
+               "other Command shortcuts never release the plain-text paste hotkey")
         expect(registeredDefaults[DefaultsKey.urlCleanerEnabled] as? Bool == false,
                "URL cleaner clipboard watching is opt-in")
         expect(registeredDefaults[DefaultsKey.windowMaximizeEnabled] as? Bool == false,
@@ -826,6 +883,8 @@ struct MetricsTests {
                "panel Media utility is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlMouseScroll] as? Bool == true,
                "panel mouse scroll control is visible by default")
+        expect(registeredDefaults[DefaultsKey.panelControlMouseNavigation] as? Bool == true,
+               "panel mouse navigation control is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlSwitcher] as? Bool == true,
                "panel switcher control is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlDockPreview] as? Bool == true,
@@ -981,7 +1040,7 @@ struct MetricsTests {
                "memory menu bar style defaults to percent")
         expect(registeredDefaults[DefaultsKey.windowLayoutShortcutsEnabled] as? Bool == false,
                "window layout shortcuts stay off until enabled")
-        let layoutShortcutKeys = [
+        let assignedLayoutShortcutKeys = [
             DefaultsKey.windowLayoutShortcutLeft,
             DefaultsKey.windowLayoutShortcutRight,
             DefaultsKey.windowLayoutShortcutTop,
@@ -1000,14 +1059,28 @@ struct MetricsTests {
             DefaultsKey.windowLayoutShortcutRightTwoThirds,
             DefaultsKey.windowLayoutShortcutNextDisplay,
         ]
-        let layoutShortcutValues = layoutShortcutKeys.compactMap { registeredDefaults[$0] as? String }
-        expect(layoutShortcutValues.count == layoutShortcutKeys.count,
-               "every window layout action has a registered shortcut")
-        expect(Set(layoutShortcutValues).count == layoutShortcutValues.count,
+        let assignedLayoutShortcutValues = assignedLayoutShortcutKeys.compactMap {
+            registeredDefaults[$0] as? String
+        }
+        expect(assignedLayoutShortcutValues.count == assignedLayoutShortcutKeys.count,
+               "every established window layout action has a registered shortcut")
+        let unassignedSixthShortcutKeys = [
+            DefaultsKey.windowLayoutShortcutTopLeftSixth,
+            DefaultsKey.windowLayoutShortcutTopCenterSixth,
+            DefaultsKey.windowLayoutShortcutTopRightSixth,
+            DefaultsKey.windowLayoutShortcutBottomLeftSixth,
+            DefaultsKey.windowLayoutShortcutBottomCenterSixth,
+            DefaultsKey.windowLayoutShortcutBottomRightSixth,
+        ]
+        expect(unassignedSixthShortcutKeys.allSatisfy {
+                   registeredDefaults[$0] as? String == WindowLayoutAction.clearedShortcutStorageValue
+               },
+               "sixth layout shortcuts start unassigned")
+        expect(Set(assignedLayoutShortcutValues).count == assignedLayoutShortcutValues.count,
                "window layout shortcuts do not conflict with each other by default")
         let globalShortcutValues = GlobalShortcutRole.allCases
             .compactMap { registeredDefaults[$0.storageKey] as? String }
-        expect(Set(layoutShortcutValues).intersection(globalShortcutValues).isEmpty,
+        expect(Set(assignedLayoutShortcutValues).intersection(globalShortcutValues).isEmpty,
                "window layout shortcuts do not conflict with other global shortcuts by default")
         expect(GlobalShortcut(keyCode: Int64(kVK_ISO_Section),
                               modifiers: [.control, .option, .command]).isValid,
@@ -1016,22 +1089,112 @@ struct MetricsTests {
                "extra brightness is opt-in")
         expect(registeredDefaults[DefaultsKey.extraBrightnessLevel] as? Int == 100,
                "extra brightness starts at full intensity once enabled")
-        expect(ExtraBrightnessSupport.boostFactor(level: 0, maxEDR: 1.6) == 1.0,
+        expect(registeredDefaults[DefaultsKey.musicBlockEnabled] as? Bool == false,
+               "blocking the music app from launching is opt-in")
+        expect(registeredDefaults[DefaultsKey.musicBlockReplacementPath] as? String == "",
+               "the music replacement app starts unset")
+        expect(registeredDefaults[DefaultsKey.panelUtilityCleaner] as? Bool == true,
+               "the cleaner row is visible in the panel utilities like its siblings")
+        expect(registeredDefaults[DefaultsKey.cleanerScheduleFrequency] as? String == "off",
+               "automatic cleanup is opt-in")
+        expect(registeredDefaults[DefaultsKey.cleanerScheduleHour] as? Int == 9
+               && registeredDefaults[DefaultsKey.cleanerScheduleMinute] as? Int == 0
+               && registeredDefaults[DefaultsKey.cleanerScheduleWeekday] as? Int == 2,
+               "the schedule defaults to nine in the morning on Mondays")
+        expect(registeredDefaults[DefaultsKey.cleanerScheduleNotify] as? Bool == true,
+               "the schedule reports its outcome unless the user opts out")
+        expect(registeredDefaults[DefaultsKey.cleanerBadgeSeen] as? Bool == false,
+               "the red dot guiding to the cleaner shows until the cleaner opens once")
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(identifier: "UTC") ?? .current
+        func scheduleDate(_ day: Int, _ hour: Int, _ minute: Int) -> Date {
+            utcCalendar.date(from: DateComponents(year: 2026, month: 7, day: day,
+                                                  hour: hour, minute: minute)) ?? Date()
+        }
+        expect(CleanerSchedule.nextFireDate(after: scheduleDate(9, 8, 0), frequency: .daily,
+                                            hour: 9, minute: 0, weekday: 2,
+                                            calendar: utcCalendar) == scheduleDate(9, 9, 0),
+               "a daily schedule still due today fires today")
+        expect(CleanerSchedule.nextFireDate(after: scheduleDate(9, 10, 0), frequency: .daily,
+                                            hour: 9, minute: 0, weekday: 2,
+                                            calendar: utcCalendar) == scheduleDate(10, 9, 0),
+               "a daily schedule already past fires tomorrow")
+        expect(CleanerSchedule.nextFireDate(after: scheduleDate(9, 10, 0), frequency: .weekly,
+                                            hour: 9, minute: 0, weekday: 2,
+                                            calendar: utcCalendar) == scheduleDate(13, 9, 0),
+               "a weekly Monday schedule queried on Thursday fires next Monday")
+        expect(CleanerSchedule.nextFireDate(after: scheduleDate(9, 10, 0), frequency: .off,
+                                            hour: 9, minute: 0, weekday: 2,
+                                            calendar: utcCalendar) == nil,
+               "an off schedule never fires")
+        expect(CleanerSchedule.missedRun(now: scheduleDate(9, 10, 0),
+                                         lastRun: scheduleDate(8, 9, 30),
+                                         frequency: .daily, hour: 9, minute: 0, weekday: 2,
+                                         calendar: utcCalendar),
+               "a fire that passed while the Mac was off counts as missed")
+        expect(!CleanerSchedule.missedRun(now: scheduleDate(9, 10, 0),
+                                          lastRun: scheduleDate(9, 9, 30),
+                                          frequency: .daily, hour: 9, minute: 0, weekday: 2,
+                                          calendar: utcCalendar),
+               "a run that already happened today is not missed")
+        expect(!CleanerSchedule.missedRun(now: scheduleDate(9, 10, 0), lastRun: nil,
+                                          frequency: .daily, hour: 9, minute: 0, weekday: 2,
+                                          calendar: utcCalendar),
+               "enabling the schedule never triggers a surprise first run")
+        expect(CleanerSchedule.hour24(hour12: 12, isPM: false) == 0
+               && CleanerSchedule.hour24(hour12: 12, isPM: true) == 12
+               && CleanerSchedule.hour24(hour12: 1, isPM: true) == 13
+               && CleanerSchedule.hour24(hour12: 11, isPM: false) == 11,
+               "twelve hour picks map to the right clock hours, midnight and noon included")
+        expect(CleanerSchedule.hour12Components(fromHour24: 0) == (12, false)
+               && CleanerSchedule.hour12Components(fromHour24: 12) == (12, true)
+               && CleanerSchedule.hour12Components(fromHour24: 18) == (6, true)
+               && CleanerSchedule.hour12Components(fromHour24: 9) == (9, false),
+               "clock hours split back into the twelve hour pickers")
+        expect((0...23).allSatisfy { hour in
+                   let parts = CleanerSchedule.hour12Components(fromHour24: hour)
+                   return CleanerSchedule.hour24(hour12: parts.hour12, isPM: parts.isPM) == hour
+               },
+               "every hour of the day round trips through the twelve hour pickers")
+        let panel500 = ExtraBrightnessSupport.panelReference(model: "MacBookPro18,1")
+        let panel600 = ExtraBrightnessSupport.panelReference(model: "Mac16,7")
+        expect(panel500.referenceEDR == 3.2 && panel500.bonus == 0.58,
+               "the 2021/2023 500 nit panels take the stronger curve")
+        expect(panel600.referenceEDR == 2.66 && panel600.bonus == 0.48,
+               "600 nit panels from M3 onwards take the gentler curve")
+        expect(ExtraBrightnessSupport.panelReference(model: "Mac99,9").bonus == 0.48
+               && ExtraBrightnessSupport.panelReference(model: nil).bonus == 0.48,
+               "unknown and future models fall back to the conservative curve")
+        expect(ExtraBrightnessSupport.boostFactor(level: 0, maxEDR: 2.66, reference: panel600) == 1.0,
                "zero level applies no brightness boost")
-        expect(abs(ExtraBrightnessSupport.boostFactor(level: 1, maxEDR: 1.6) - 1.6) < 0.0001,
-               "full level uses the panel's whole EDR headroom")
-        expect(ExtraBrightnessSupport.boostFactor(level: 1, maxEDR: 8.0) == ExtraBrightnessSupport.factorCap,
-               "boost factor stays capped even when the panel reports huge headroom")
-        expect(ExtraBrightnessSupport.boostFactor(level: 0.5, maxEDR: 0.5) == 1.0,
-               "no headroom means no boost regardless of level")
-        expect(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 1.0, potentialEDR: 16.0)
+        expect(abs(ExtraBrightnessSupport.boostFactor(level: 1, maxEDR: 2.66, reference: panel600) - 1.48) < 0.0001,
+               "full level on a 600 nit panel tops out at the sustainable 1.48x")
+        expect(abs(ExtraBrightnessSupport.boostFactor(level: 1, maxEDR: 16.0, reference: panel600) - 1.48) < 0.0001,
+               "huge reported headroom never pushes past what the panel sustains")
+        expect(abs(ExtraBrightnessSupport.boostFactor(level: 1, maxEDR: 3.2, reference: panel500) - 1.58) < 0.0001,
+               "full level on a 500 nit panel tops out at 1.58x")
+        expect(abs(ExtraBrightnessSupport.boostFactor(level: 1, maxEDR: 1.33, reference: panel600) - 1.24) < 0.0001,
+               "a partial headroom grant scales the boost down proportionally")
+        expect(abs(ExtraBrightnessSupport.boostFactor(level: 0.5, maxEDR: 2.66, reference: panel600) - 1.24) < 0.0001,
+               "half level applies half the panel bonus")
+        expect(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 1.0, potentialEDR: 16.0,
+                                                   reference: panel600)
                == ExtraBrightnessSupport.engagementFactor,
                "before the panel engages, the overlay shows only the small engagement boost")
-        expect(abs(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 2.0, potentialEDR: 16.0) - 2.0) < 0.0001,
-               "with full headroom engaged the overlay uses it all at full level")
-        expect(ExtraBrightnessSupport.renderFactor(level: 0, currentEDR: 2.0, potentialEDR: 16.0) == 1.0,
+        expect(abs(ExtraBrightnessSupport.renderFactor(level: 0.1, currentEDR: 1.0, potentialEDR: 16.0,
+                                                       reference: panel600) - 1.048) < 0.0001,
+               "the engagement nudge never exceeds the level's own target")
+        expect(abs(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 2.66, potentialEDR: 16.0,
+                                                       reference: panel600) - 1.48) < 0.0001,
+               "with the reference headroom engaged the full level renders the full bonus")
+        expect(ExtraBrightnessSupport.renderFactor(level: 0, currentEDR: 2.66, potentialEDR: 16.0,
+                                                   reference: panel600) == 1.0,
                "zero level renders no boost even with headroom engaged")
-        expect(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 1.0, potentialEDR: 1.0) == 1.0,
+        expect(abs(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 1.2, potentialEDR: 16.0,
+                                                       reference: panel600) - 1.2) < 0.0001,
+               "the rendered factor never exceeds the headroom macOS is granting right now")
+        expect(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 1.0, potentialEDR: 1.0,
+                                                   reference: panel600) == 1.0,
                "a mode without any potential headroom gets no boost attempt at all")
         for model in ["MacBookPro18,1", "MacBookPro18,4", "Mac14,5", "Mac14,10",
                       "Mac15,3", "Mac15,11", "Mac16,1", "Mac16,7", "Mac17,2", "Mac17,9"] {
@@ -1065,6 +1228,97 @@ struct MetricsTests {
         expect(!ExtraBrightnessSupport.isXDRPanelName("Built-in Liquid Retina Display")
                && !ExtraBrightnessSupport.isXDRPanelName("Built-in Retina Display"),
                "generic built-in panel names do not qualify by name")
+        expect(CleanerSupport.isProtectedBundleID("com.apple.Music")
+               && CleanerSupport.isProtectedBundleID("com.apple")
+               && CleanerSupport.isProtectedBundleID("group.com.apple.notes")
+               && CleanerSupport.isProtectedBundleID("com.vorssaint.utils"),
+               "system domains and this app can never be junk owners")
+        expect(!CleanerSupport.isProtectedBundleID("com.vendor.editor"),
+               "third party identifiers are eligible for the leftover check")
+        expect(CleanerSupport.isProtectedBundleID("systemgroup.com.apple.icloud.searchpartyd.sharedsettings")
+               && CleanerSupport.isProtectedBundleID("243LU875E5.groups.com.apple.podcasts")
+               && CleanerSupport.isProtectedBundleID("developer.apple.wwdc")
+               && CleanerSupport.isProtectedBundleID("is.workflow.my.app")
+               && CleanerSupport.isProtectedBundleID("vorss.tests.switcher.shortcut"),
+               "system domains stay protected in every wrapping, team prefixes included")
+        expect(CleanerSupport.sharedInfrastructurePrefixes.allSatisfy {
+                   CleanerSupport.isProtectedBundleID($0)
+               },
+               "embedded updaters and crash reporters can never be junk owners")
+        expect(CleanerSupport.bundleIDCandidate(fromEntryName: "systemgroup.com.apple.icloud.sharedsettings.plist")
+               == "com.apple.icloud.sharedsettings",
+               "systemgroup wrappers unwrap to the real owner")
+        expect(CleanerSupport.bundleIDCandidate(fromEntryName:
+               "com.vendor.editor.Helper.B787EFF9-B8E2-5296-96AF-DF9D3CD3AC4F.plist") == nil,
+               "names carrying a UUID are unattributable and never candidates")
+        expect(CleanerSupport.containsUUIDComponent("x.B787EFF9-B8E2-5296-96AF-DF9D3CD3AC4F")
+               && !CleanerSupport.containsUUIDComponent("com.vendor.editor"),
+               "the UUID detector matches dashed UUIDs and nothing else")
+        expect(CleanerSupport.sharesVendorNamespace(candidate: "com.vendor.backgroundtool",
+                                                    withInstalled: ["com.vendor.editor"])
+               && CleanerSupport.sharesVendorNamespace(candidate: "com.publisher.agent",
+                                                       withInstalled: ["com.publisher.browser"]),
+               "a vendor's updaters are owned while any app of that vendor is installed")
+        expect(!CleanerSupport.sharesVendorNamespace(candidate: "com.vendor.editor",
+                                                     withInstalled: ["com.publisher.browser"]),
+               "different vendors never own each other")
+        expect(!CleanerSupport.sharesVendorNamespace(candidate: "io.github.account.tool",
+                                                     withInstalled: ["io.github.other.app"]),
+               "code hosting namespaces are shared by unrelated developers and never match")
+        expect(CleanerPolicy.precheckCacheEntry("Homebrew")
+               && CleanerPolicy.precheckCacheEntry("com.vendor.editor"),
+               "download caches and third party app caches start checked")
+        expect(!CleanerPolicy.precheckCacheEntry("PlainVendorFolder")
+               && !CleanerPolicy.precheckCacheEntry("com.apple.Music")
+               && !CleanerPolicy.precheckCacheEntry("com.spotify.client")
+               && !CleanerPolicy.precheckCacheEntry("ms-playwright"),
+               "system, sensitive and unattributable caches start unchecked")
+        expect(CleanerSupport.looksLikeBundleID("com.vendor.editor")
+               && CleanerSupport.looksLikeBundleID("com.foo.Bar-Helper_2"),
+               "reverse DNS names are recognized")
+        expect(!CleanerSupport.looksLikeBundleID("VendorFolder")
+               && !CleanerSupport.looksLikeBundleID("com.foo")
+               && !CleanerSupport.looksLikeBundleID("com..foo")
+               && !CleanerSupport.looksLikeBundleID("com.foo.bár"),
+               "plain names, short names and odd characters never match by name")
+        expect(CleanerSupport.bundleIDCandidate(fromEntryName: "com.vendor.editor.plist") == "com.vendor.editor"
+               && CleanerSupport.bundleIDCandidate(fromEntryName: "group.com.foo.bar") == "com.foo.bar"
+               && CleanerSupport.bundleIDCandidate(fromEntryName: "com.foo.bar.savedState") == "com.foo.bar"
+               && CleanerSupport.bundleIDCandidate(fromEntryName: "com.foo.bar.binarycookies") == "com.foo.bar",
+               "entry names map to their owning bundle identifier")
+        expect(CleanerSupport.bundleIDCandidate(fromEntryName: "VendorFolder") == nil,
+               "folders without a bundle shaped name are never candidates")
+        expect(CleanerSupport.isOwned(candidate: "com.vendor.editor.startuphelper",
+                                      byInstalled: ["com.vendor.editor"]),
+               "embedded helper identifiers are owned by their installed app")
+        expect(CleanerSupport.isOwned(candidate: "com.maker",
+                                      byInstalled: ["com.maker.app"]),
+               "a family prefix of an installed app counts as owned")
+        expect(!CleanerSupport.isOwned(candidate: "com.vendor.editor", byInstalled: ["com.publisher.browser"]),
+               "identifiers with no installed relative are unowned")
+        expect(!CleanerSupport.isOwned(candidate: "com.makerapp.tool", byInstalled: ["com.maker.app"]),
+               "prefix ownership requires a dot boundary, not a string prefix")
+        expect(CleanerSupport.executablePaths(inLaunchPlist: [
+                   "Program": "/Applications/Gone.app/Contents/MacOS/agent",
+                   "ProgramArguments": ["/usr/local/bin/gone-tool", "--flag"],
+                   "BundleProgram": "Contents/MacOS/relative",
+               ]) == ["/Applications/Gone.app/Contents/MacOS/agent", "/usr/local/bin/gone-tool"],
+               "launch plists yield their absolute executables and skip relative ones")
+        expect(CleanerSupport.launchPlistIsRemovableOrphan(label: "com.vendor.editor.launchdaemon",
+                                                           executables: ["/Applications/Gone.app/x"],
+                                                           executableExists: { _ in false }),
+               "a plist whose executables are all gone is a removable orphan")
+        expect(!CleanerSupport.launchPlistIsRemovableOrphan(label: "com.vendor.editor.launchdaemon",
+                                                            executables: ["/bin/ls"],
+                                                            executableExists: { _ in true }),
+               "a plist with a living executable is never an orphan")
+        expect(!CleanerSupport.launchPlistIsRemovableOrphan(label: "com.apple.something",
+                                                            executables: ["/gone"],
+                                                            executableExists: { _ in false })
+               && !CleanerSupport.launchPlistIsRemovableOrphan(label: nil,
+                                                               executables: [],
+                                                               executableExists: { _ in false }),
+               "system agents and undecidable plists are never offered")
         expect(registeredDefaults[DefaultsKey.mediaLastTool] as? String == MediaTool.videoCompressor.rawValue,
                "Media defaults to video compressor")
         expect(registeredDefaults[DefaultsKey.mediaVideoCodec] as? String == MediaVideoCodec.h264.rawValue,
@@ -1199,6 +1453,10 @@ struct MetricsTests {
                                                    defaultShortcut: .windowLayoutLeftDefault)
                == .windowLayoutRightDefault,
                "a saved window layout shortcut wins over the default")
+        expect(WindowLayoutAction.resolvedShortcut(storedValue: nil, defaultShortcut: nil) == nil,
+               "a window layout action without a default shortcut stays unassigned")
+        expect(WindowLayoutAction.resolvedShortcut(storedValue: "garbage-value", defaultShortcut: nil) == nil,
+               "a corrupt shortcut cannot assign an action that has no default")
 
         // MARK: Window layout geometry
 
@@ -1231,6 +1489,42 @@ struct MetricsTests {
         expect(WindowLayoutGeometry.rect(for: .rightTwoThirds, current: currentWindow, visibleFrame: visibleFrame)
                == CGRect(x: 480, y: 40, width: 960, height: 860),
                "window layout right two thirds targets the final two thirds")
+        let sixthLayouts: [(WindowLayoutAction, CGRect, CGRect)] = [
+            (.topLeftSixth,
+             CGRect(x: 0, y: 470, width: 480, height: 430),
+             CGRect(x: 0, y: 400, width: 600, height: 500)),
+            (.topCenterSixth,
+             CGRect(x: 480, y: 470, width: 480, height: 430),
+             CGRect(x: 420, y: 400, width: 600, height: 500)),
+            (.topRightSixth,
+             CGRect(x: 960, y: 470, width: 480, height: 430),
+             CGRect(x: 840, y: 400, width: 600, height: 500)),
+            (.bottomLeftSixth,
+             CGRect(x: 0, y: 40, width: 480, height: 430),
+             CGRect(x: 0, y: 40, width: 600, height: 500)),
+            (.bottomCenterSixth,
+             CGRect(x: 480, y: 40, width: 480, height: 430),
+             CGRect(x: 420, y: 40, width: 600, height: 500)),
+            (.bottomRightSixth,
+             CGRect(x: 960, y: 40, width: 480, height: 430),
+             CGRect(x: 840, y: 40, width: 600, height: 500)),
+        ]
+        for (action, target, anchored) in sixthLayouts {
+            expect(WindowLayoutGeometry.rect(for: action,
+                                             current: currentWindow,
+                                             visibleFrame: visibleFrame) == target,
+                   "\(action.rawValue) targets its cell in the 3 by 2 grid")
+            expect(WindowLayoutGeometry.anchoredRect(for: action,
+                                                     targetRect: target,
+                                                     actualSize: CGSize(width: 600, height: 500),
+                                                     visibleFrame: visibleFrame) == anchored,
+                   "\(action.rawValue) preserves its requested horizontal and vertical anchors")
+            expect(WindowLayoutGeometry.accepts(actualRect: anchored,
+                                                targetRect: target,
+                                                action: action,
+                                                anchorTolerance: 36),
+                   "\(action.rawValue) accepts a larger minimum-sized window on the same anchors")
+        }
         let nextDisplayFrame = CGRect(x: 1440, y: 80, width: 1920, height: 1000)
         let rightHalfWindow = CGRect(x: 720, y: 40, width: 720, height: 860)
         expect(WindowLayoutGeometry.rectForNextDisplay(current: rightHalfWindow,
@@ -1253,6 +1547,10 @@ struct MetricsTests {
                "every window layout shortcut has its own defaults key")
         expect(WindowLayoutAction.shortcutActions.contains(.leftHalf),
                "existing half actions keep global shortcuts")
+        expect([WindowLayoutAction.topLeftSixth, .topCenterSixth, .topRightSixth,
+                .bottomLeftSixth, .bottomCenterSixth, .bottomRightSixth]
+               .allSatisfy { $0.supportsShortcut && $0.defaultShortcut == nil },
+               "sixth actions support optional shortcuts without claiming defaults")
         expect(WindowLayoutGeometry.rect(for: .topLeft, current: currentWindow, visibleFrame: visibleFrame)
                == CGRect(x: 0, y: 470, width: 720, height: 430),
                "window layout top left targets the upper-left quadrant")
@@ -1675,6 +1973,37 @@ struct MetricsTests {
 
         // MARK: Shelf persistence
 
+        expect(ShelfInteractionSupport.allowsAutomaticOpen(
+            sourceBundleIdentifier: "com.example.Editor",
+            excludedBundleIdentifiers: ["com.example.Browser"]),
+               "shelf automatic opening allows apps outside the exclusion list")
+        expect(!ShelfInteractionSupport.allowsAutomaticOpen(
+            sourceBundleIdentifier: "com.example.Browser",
+            excludedBundleIdentifiers: ["com.example.Browser"]),
+               "shelf automatic opening stays off for an excluded source app")
+        expect(ShelfInteractionSupport.allowsAutomaticOpen(
+            sourceBundleIdentifier: nil,
+            excludedBundleIdentifiers: ["com.example.Browser"]),
+               "shelf automatic opening does not false-block an unknown drag source")
+        expect(ShelfInteractionSupport.shouldCloseAfterDrag(
+            dropAccepted: true, draggedItemCount: 2, closeAfterDrop: true, pinned: false),
+               "shelf closes after a real accepted external drag")
+        expect(!ShelfInteractionSupport.shouldCloseAfterDrag(
+            dropAccepted: false, draggedItemCount: 2, closeAfterDrop: true, pinned: false),
+               "shelf stays open after a cancelled drag")
+        expect(!ShelfInteractionSupport.shouldCloseAfterDrag(
+            dropAccepted: true, draggedItemCount: 0, closeAfterDrop: true, pinned: false),
+               "shelf internal merges do not dismiss the panel")
+        expect(!ShelfInteractionSupport.shouldCloseAfterDrag(
+            dropAccepted: true, draggedItemCount: 2, closeAfterDrop: true, pinned: true),
+               "shelf pin overrides close after drop")
+        expect(ShelfInteractionSupport.shouldRemoveAfterDrag(
+            dropAccepted: true, draggedItemCount: 1, removeAfterDrop: true),
+               "shelf removes an accepted item when automatic removal is on")
+        expect(!ShelfInteractionSupport.shouldRemoveAfterDrag(
+            dropAccepted: true, draggedItemCount: 1, removeAfterDrop: false),
+               "shelf retains an accepted item when automatic removal is off")
+
         let shelfFile = ShelfPersistedItem(id: UUID(), kind: .file, title: "notes.pdf",
                                            path: "/tmp/notes.pdf")
         let shelfText = ShelfPersistedItem(id: UUID(), kind: .text, title: "Hello", text: "Hello world")
@@ -2081,6 +2410,18 @@ struct MetricsTests {
                + SwitcherIconRowLayout.hintHeight
                + SwitcherIconRowLayout.padding * 2,
                "App Switcher icon-row mode reserves preview, icon row and shortcut hint height")
+        expect(iconRowLayout.simplePanelSize.height
+               == SwitcherIconRowLayout.simpleTitleHeight
+               + SwitcherIconRowLayout.simpleTitleGap
+               + SwitcherIconRowLayout.rowHeight
+               + SwitcherIconRowLayout.hintGap
+               + SwitcherIconRowLayout.hintHeight
+               + SwitcherIconRowLayout.padding * 2,
+               "App Switcher simple mode replaces previews with a compact title rail")
+        expect(iconRowLayout.simplePanelSize.width
+               == max(iconRowLayout.appRowSurfaceWidth, SwitcherIconRowLayout.hintBarWidth)
+               + SwitcherIconRowLayout.padding * 2,
+               "App Switcher simple mode fits the app row and shortcut hints")
         let previousPreviewSize = UserDefaults.standard.object(forKey: DefaultsKey.previewSize)
         UserDefaults.standard.set("xlarge", forKey: DefaultsKey.previewSize)
         let xlargeIconRowLayout = SwitcherIconRowLayout.compute(appCount: 6,
@@ -3341,6 +3682,8 @@ struct MetricsTests {
             expect(!strings.homebrewUpdateHomebrew.isEmpty, "\(prefix) Homebrew update Homebrew title is present")
             expect(!strings.switcherIconRowMode.isEmpty, "\(prefix) App Switcher icon-row title is present")
             expect(!strings.switcherIconRowModeCaption.isEmpty, "\(prefix) App Switcher icon-row caption is present")
+            expect(!strings.switcherSimpleMode.isEmpty, "\(prefix) App Switcher simple-mode title is present")
+            expect(!strings.switcherSimpleModeCaption.isEmpty, "\(prefix) App Switcher simple-mode caption is present")
             expect(!strings.switcherShortcutHintApps.isEmpty, "\(prefix) App Switcher app shortcut hint is present")
             expect(!strings.switcherShortcutHintWindows.isEmpty, "\(prefix) App Switcher window shortcut hint is present")
             expect(!strings.networkApps.isEmpty, "\(prefix) network app usage title is present")

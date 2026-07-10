@@ -69,6 +69,7 @@ final class CleaningModeManager: ObservableObject {
         // Wiping the trackpad is nothing but stray three-finger contacts;
         // middle-click emulation must not fire from them.
         MiddleClickService.shared.suspend()
+        MouseNavigationService.shared.suspend()
         unlock.reset()
         unlockProgress = 0
         isActive = true
@@ -95,6 +96,7 @@ final class CleaningModeManager: ObservableObject {
         // Restore debounce and middle click if the user still has them enabled.
         KeyboardDebounceService.shared.syncWithPreferences()
         MiddleClickService.shared.syncWithPreferences()
+        MouseNavigationService.shared.syncWithPreferences()
     }
 
     // MARK: - Event tap

@@ -8,7 +8,9 @@ import SwiftUI
 /// Everything the quick launcher can hold. Raw values are storage ids for
 /// the user's order and hidden set.
 enum QuickLauncherItem: String, PanelOrderItem, Identifiable {
-    case keepAwake, micMute, screenOCR, colorPicker, clipboard, windowLayout,
+    // Case order is the default grid order; the cleaner comes second, right
+    // after Keep awake, by the owner's decision. Saved orders are untouched.
+    case keepAwake, cleaner, micMute, screenOCR, colorPicker, clipboard, windowLayout,
          cleaning, homebrew, media, urlCleaner, uninstaller
 
     var id: String { rawValue }
@@ -236,7 +238,7 @@ final class QuickLauncherService: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 CleaningModeManager.shared.activate()
             }
-        case .windowLayout, .homebrew, .media, .urlCleaner, .uninstaller:
+        case .windowLayout, .homebrew, .media, .urlCleaner, .uninstaller, .cleaner:
             activeUtility = item
         }
     }

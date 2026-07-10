@@ -28,7 +28,7 @@ final class AppSwitcher: ObservableObject {
         didSet {
             guard oldValue != selectedIndex else { return }
             updateIconRowLayoutForCurrentSelection()
-            if sessionActive, iconRowModeEnabled {
+            if sessionActive, usesIconRowLayout {
                 resizePanel()
             }
         }
@@ -93,7 +93,11 @@ final class AppSwitcher: ObservableObject {
             // the first ⌘Tab.
             let panel = ensurePanel()
             panel.contentViewController?.view.layoutSubtreeIfNeeded()
-            WindowPreviewProvider.shared.startWarming()
+            if !capturesPreviews {
+                WindowPreviewProvider.shared.stopWarming()
+            } else {
+                WindowPreviewProvider.shared.startWarming()
+            }
         } else {
             removeTap()
             WindowPreviewProvider.shared.stopWarming()
@@ -263,11 +267,15 @@ final class AppSwitcher: ObservableObject {
         sessionSourceContext = sourceContext(in: list)
         sessionStartItemID = sessionSourceContext?.itemID ?? currentItemID(in: list)
         recomputeLayouts(for: list)
-        previews = Dictionary(uniqueKeysWithValues: list.compactMap { item in
-            item.previewWindowID.flatMap { id in
-                WindowPreviewProvider.shared.cachedPreview(for: id).map { (id, $0) }
-            }
-        })
+        if !capturesPreviews {
+            previews = [:]
+        } else {
+            previews = Dictionary(uniqueKeysWithValues: list.compactMap { item in
+                item.previewWindowID.flatMap { id in
+                    WindowPreviewProvider.shared.cachedPreview(for: id).map { (id, $0) }
+                }
+            })
+        }
         userNavigated = false
         // Index 0 is the on-screen window; index 1 is the most-recently-used
         // other window — the toggle target, which may be another window of the
@@ -277,11 +285,13 @@ final class AppSwitcher: ObservableObject {
         sessionShortcut = shortcut
         shiftBackNavigationHeld = reversed && shortcut.shiftIsNavigationModifier
 
-        WindowPreviewProvider.shared.refreshPreviews(for: list, maxPixelSize: 640 * PreviewSizing.scale) { [weak self] windowID, image in
-            guard let self,
-                  self.sessionActive,
-                  self.sessionItems.contains(where: { $0.previewWindowID == windowID }) else { return }
-            self.previews[windowID] = image
+        if capturesPreviews {
+            WindowPreviewProvider.shared.refreshPreviews(for: list, maxPixelSize: 640 * PreviewSizing.scale) { [weak self] windowID, image in
+                guard let self,
+                      self.sessionActive,
+                      self.sessionItems.contains(where: { $0.previewWindowID == windowID }) else { return }
+                self.previews[windowID] = image
+            }
         }
         scheduleShowPanel()
         return true
@@ -323,7 +333,7 @@ final class AppSwitcher: ObservableObject {
 
     private func initialSelectionIndex(in items: [SwitcherItem], reversed: Bool) -> Int {
         guard !items.isEmpty else { return 0 }
-        guard iconRowModeEnabled else {
+        guard usesIconRowLayout else {
             return reversed ? max(0, items.count - 1) : (items.count > 1 ? 1 : 0)
         }
 
@@ -480,7 +490,7 @@ final class AppSwitcher: ObservableObject {
 
     private func advanceSelection(by delta: Int, wrapping: Bool = true) {
         guard !windows.isEmpty else { return }
-        if iconRowModeEnabled {
+        if usesIconRowLayout {
             advanceAppSelection(by: delta, wrapping: wrapping)
             return
         }
@@ -592,7 +602,7 @@ final class AppSwitcher: ObservableObject {
     /// Row jump (↑/↓): moves without wrapping so the selection stays put at
     /// the grid edges.
     private func moveSelection(by delta: Int) {
-        if iconRowModeEnabled {
+        if usesIconRowLayout {
             advanceWindowInSelectedApp(by: delta < 0 ? -1 : 1)
             return
         }
@@ -661,7 +671,7 @@ final class AppSwitcher: ObservableObject {
 
     private func showPanel() {
         let panel = ensurePanel()
-        panel.hasShadow = !iconRowModeEnabled
+        panel.hasShadow = !usesIconRowLayout
         hoverAnchor = NSEvent.mouseLocation
         panel.setFrame(centeredFrame(for: currentPanelSize), display: true)
         panel.invalidateShadow()
@@ -674,19 +684,32 @@ final class AppSwitcher: ObservableObject {
     private func resizePanel() {
         guard let panel else { return }
         let frame = centeredFrame(for: currentPanelSize)
-        panel.hasShadow = !iconRowModeEnabled
+        panel.hasShadow = !usesIconRowLayout
         panel.setFrame(frame, display: true, animate: panel.isVisible)
         panel.invalidateShadow()
     }
 
     private var currentPanelSize: CGSize {
-        iconRowModeEnabled
-            ? iconRowLayout.panelSize
+        usesIconRowLayout
+            ? (simpleModeEnabled ? iconRowLayout.simplePanelSize : iconRowLayout.panelSize)
             : grid.panelSize
     }
 
     private var iconRowModeEnabled: Bool {
         UserDefaults.standard.bool(forKey: DefaultsKey.switcherIconRowMode)
+    }
+
+    private var simpleModeEnabled: Bool {
+        UserDefaults.standard.bool(forKey: DefaultsKey.switcherSimpleMode)
+    }
+
+    private var usesIconRowLayout: Bool {
+        SwitcherSupport.usesIconRowLayout(iconRowMode: iconRowModeEnabled,
+                                          simpleMode: simpleModeEnabled)
+    }
+
+    private var capturesPreviews: Bool {
+        SwitcherSupport.capturesPreviews(simpleMode: simpleModeEnabled)
     }
 
     private func recomputeLayouts(for items: [SwitcherItem]) {

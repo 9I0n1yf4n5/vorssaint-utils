@@ -63,6 +63,7 @@ enum SelfUninstall {
     private static func suspendInputInterceptors() {
         ScrollInverter.shared.suspend()
         SmoothScrollService.shared.suspend()
+        MouseNavigationService.shared.suspend()
         WindowMaximizer.shared.stop()
         AppSwitcher.shared.suspend()
         DockPreviewService.shared.stop()

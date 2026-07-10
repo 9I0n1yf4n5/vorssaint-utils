@@ -34,12 +34,21 @@ final class ExtraBrightnessService: ObservableObject {
     /// A one-pixel corner window without the multiply filter. The multiply
     /// layer alone does not reliably make macOS engage the panel's headroom,
     /// but a plain extended range pixel does (verified on this hardware).
+    /// Its layer keeps re-presenting on every poll tick: macOS only sustains
+    /// the headroom while extended range content keeps being presented, and
+    /// revokes it about a second after the last present (the boost visibly
+    /// dropped out on XDR hardware when only the first frame was shown).
     private var triggerWindow: NSWindow?
+    private var triggerLayer: CAMetalLayer?
     private var metalDevice: MTLDevice?
     private var commandQueue: MTLCommandQueue?
     private var pollTimer: Timer?
-    private var renderedFactor: Double = 0
     private var screenObserver: NSObjectProtocol?
+    private var sleepObservers: [NSObjectProtocol] = []
+    /// While the screens sleep the compositor stops recycling drawables and
+    /// nextDrawable would stall the main thread, so presents pause and a
+    /// fresh render happens on wake.
+    private var screensAsleep = false
 
     private init() {}
 
@@ -69,6 +78,9 @@ final class ExtraBrightnessService: ObservableObject {
         return String(cString: buffer)
     }()
 
+    /// Which sustainable boost curve this panel generation takes.
+    private static let panelReference = ExtraBrightnessSupport.panelReference(model: modelIdentifier)
+
     private static func builtInXDRScreen() -> NSScreen? {
         NSScreen.screens.first { screen in
             guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
@@ -93,10 +105,13 @@ final class ExtraBrightnessService: ObservableObject {
         guard let screen = Self.builtInXDRScreen() else { return }
         showOverlay(on: screen)
         installObserver()
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        // Four presents a second: the headroom grant follows recent extended
+        // range presents and macOS revokes it about a second after they stop,
+        // so this heartbeat keeps a comfortable margin while costing nothing.
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
             self?.renderIfNeeded()
         }
-        pollTimer?.tolerance = 0.1
+        pollTimer?.tolerance = 0.05
         renderIfNeeded()
     }
 
@@ -110,9 +125,9 @@ final class ExtraBrightnessService: ObservableObject {
         overlayLayer = nil
         triggerWindow?.orderOut(nil)
         triggerWindow = nil
+        triggerLayer = nil
         commandQueue = nil
         metalDevice = nil
-        renderedFactor = 0
         if boosting { boosting = false }
     }
 
@@ -123,11 +138,27 @@ final class ExtraBrightnessService: ObservableObject {
             object: nil, queue: .main) { [weak self] _ in
             self?.handleScreenChange()
         }
+        let workspace = NSWorkspace.shared.notificationCenter
+        sleepObservers = [
+            workspace.addObserver(forName: NSWorkspace.screensDidSleepNotification,
+                                  object: nil, queue: .main) { [weak self] _ in
+                self?.screensAsleep = true
+            },
+            workspace.addObserver(forName: NSWorkspace.screensDidWakeNotification,
+                                  object: nil, queue: .main) { [weak self] _ in
+                self?.screensAsleep = false
+                self?.renderIfNeeded()
+            },
+        ]
     }
 
     private func removeObserver() {
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         screenObserver = nil
+        let workspace = NSWorkspace.shared.notificationCenter
+        for observer in sleepObservers { workspace.removeObserver(observer) }
+        sleepObservers = []
+        screensAsleep = false
     }
 
     private func handleScreenChange() {
@@ -141,7 +172,6 @@ final class ExtraBrightnessService: ObservableObject {
             return
         }
         showOverlay(on: screen)
-        renderedFactor = 0
         renderIfNeeded()
     }
 
@@ -197,12 +227,15 @@ final class ExtraBrightnessService: ObservableObject {
     }
 
     /// The one-pixel plain extended range window that makes macOS engage the
-    /// panel's headroom (the multiply layer alone does not).
+    /// panel's headroom (the multiply layer alone does not). It sits in the
+    /// bottom right corner of the screen and is kept dim, so at most it reads
+    /// as a faint dot there while the boost is on.
     private func showTrigger(on screen: NSScreen, device: MTLDevice, queue: MTLCommandQueue) {
         triggerWindow?.orderOut(nil)
         triggerWindow = nil
+        triggerLayer = nil
 
-        let frame = NSRect(x: screen.frame.maxX - 1, y: screen.frame.maxY - 1, width: 1, height: 1)
+        let frame = NSRect(x: screen.frame.maxX - 1, y: screen.frame.minY, width: 1, height: 1)
         let window = NSWindow(contentRect: frame, styleMask: [.borderless],
                               backing: .buffered, defer: false)
         window.level = .screenSaver
@@ -230,34 +263,47 @@ final class ExtraBrightnessService: ObservableObject {
         window.contentView = view
         window.orderFrontRegardless()
         triggerWindow = window
-
-        if let drawable = layer.nextDrawable(), let commands = queue.makeCommandBuffer() {
-            let pass = MTLRenderPassDescriptor()
-            pass.colorAttachments[0].texture = drawable.texture
-            pass.colorAttachments[0].loadAction = .clear
-            pass.colorAttachments[0].storeAction = .store
-            pass.colorAttachments[0].clearColor = MTLClearColor(red: 3.0, green: 3.0, blue: 3.0, alpha: 1.0)
-            if let encoder = commands.makeRenderCommandEncoder(descriptor: pass) {
-                encoder.endEncoding()
-                commands.present(drawable)
-                commands.commit()
-            }
-        }
+        triggerLayer = layer
+        presentTrigger()
     }
 
-    /// Renders the multiply color for the current level and headroom. While
-    /// the headroom has not engaged yet it keeps re-presenting (a present on a
-    /// freshly created window can be dropped); once boosted, steady state does
-    /// no Metal work at all.
+    /// One clear pass of the extended range pixel. Called on every poll tick
+    /// while the boost is on: the headroom grant follows recent presents, so
+    /// a single frame engages it only to lose it a moment later.
+    private func presentTrigger() {
+        guard let layer = triggerLayer,
+              let queue = commandQueue,
+              let drawable = layer.nextDrawable(),
+              let commands = queue.makeCommandBuffer() else { return }
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = drawable.texture
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        // Comfortably in extended range so the headroom engages, but dim
+        // enough that the single pixel stays unobtrusive.
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 1.8, green: 1.8, blue: 1.8, alpha: 1.0)
+        guard let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
+        encoder.endEncoding()
+        commands.present(drawable)
+        commands.commit()
+    }
+
+    /// Renders the multiply color for the current level and headroom, every
+    /// poll tick. Both layers keep presenting for as long as the boost is on:
+    /// macOS grants the panel's headroom in response to presented extended
+    /// range content and revokes it moments after presents stop, which
+    /// visibly dropped the boost after a second on XDR hardware. Two tiny
+    /// clear passes per tick cost nothing measurable.
     private func renderIfNeeded() {
+        guard !screensAsleep else { return }
         guard let screen = Self.builtInXDRScreen(), overlayLayer != nil else { return }
+        presentTrigger()
         let level = Double(UserDefaults.standard.integer(forKey: DefaultsKey.extraBrightnessLevel)) / 100.0
         let headroom = Double(screen.maximumExtendedDynamicRangeColorComponentValue)
         let potential = Double(screen.maximumPotentialExtendedDynamicRangeColorComponentValue)
         let factor = ExtraBrightnessSupport.renderFactor(level: level, currentEDR: headroom,
-                                                         potentialEDR: potential)
-        let engaged = headroom > ExtraBrightnessSupport.headroomThreshold
-        guard !engaged || abs(factor - renderedFactor) > 0.005 else { return }
+                                                         potentialEDR: potential,
+                                                         reference: Self.panelReference)
         render(factor: factor)
     }
 
@@ -278,7 +324,6 @@ final class ExtraBrightnessService: ObservableObject {
         encoder.endEncoding()
         commands.present(drawable)
         commands.commit()
-        renderedFactor = factor
         let visible = factor > 1.001
         if boosting != visible { boosting = visible }
     }

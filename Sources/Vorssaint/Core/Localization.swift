@@ -258,6 +258,9 @@ struct Strings {
     let smoothScrollName: String
     let smoothScrollCaption: String
     let smoothScrollStepLabel: String
+    let mouseNavigationSection: String
+    let mouseNavigationEnable: String
+    let mouseNavigationCaption: String
     let middleClickSection: String
     let middleClickEnable: String
     let middleClickEnableCaption: String
@@ -303,6 +306,8 @@ struct Strings {
     let switcherNoWindows: String
     let switcherIconRowMode: String
     let switcherIconRowModeCaption: String
+    let switcherSimpleMode: String
+    let switcherSimpleModeCaption: String
     let switcherShortcutHintApps: String
     let switcherShortcutHintWindows: String
     let switcherWindowShortcutCaption: String
@@ -579,6 +584,16 @@ struct Strings {
     let shelfDropZoneCaption: String
     let shelfDropZoneLabel: String
     let shelfCollapse: String
+    let shelfBehaviorTitle: String
+    let shelfCloseAfterDrop: String
+    let shelfCloseAfterDropCaption: String
+    let shelfRemoveAfterDrop: String
+    let shelfRemoveAfterDropCaption: String
+    let shelfExclusionsTitle: String
+    let shelfExclusionsEmpty: String
+    let shelfExclusionsCaption: String
+    let shelfPin: String
+    let shelfUnpin: String
     let extraBrightnessName: String
     let extraBrightnessCaption: String
     let extraBrightnessLevelLabel: String
@@ -594,6 +609,9 @@ struct Strings {
     let shelfSelectedFormat: String      // + count
     let shelfHint: String
     let shelfItemImage: String
+    let shelfActionOpen: String
+    let shelfActionOpenWith: String
+    let shelfActionAirDrop: String
 
     // MARK: Panel — per-app breakdown
     let breakdownMeasuring: String
@@ -913,6 +931,59 @@ struct Strings {
     let shortcutUnavailable: String
     let shelfShortcutToggle: String
     let switcherUsageHintFormat: String
+
+    // MARK: Media keys
+    let musicBlockSection: String
+    let musicBlockTitle: String
+    let musicBlockCaption: String
+    let musicBlockReplacementLabel: String
+    let musicBlockReplacementNone: String
+    let musicBlockChooseApp: String
+
+    // MARK: Cleaner
+    let cleanerName: String
+    let cleanerIntroTitle: String
+    let cleanerIntroCaption: String
+    let cleanerScan: String
+    let cleanerScanning: String
+    let cleanerCleaning: String
+    let cleanerCatLeftovers: String
+    let cleanerCatLoginItems: String
+    let cleanerCatCaches: String
+    let cleanerCatLogs: String
+    let cleanerCatDeveloper: String
+    let cleanerCatTrash: String
+    let cleanerLeftoversNote: String
+    let cleanerLoginItemsNote: String
+    let cleanerTrashNote: String
+    let cleanerNothingFound: String
+    let cleanerClean: String
+    let cleanerDoneNote: String
+    let cleanerAgain: String
+    let cleanerRevealInFinder: String
+    let cleanerPanelCaption: String
+    let cleanerSafeSection: String
+    let cleanerOptionalSection: String
+    let cleanerCatOtherCaches: String
+    let cleanerCachesCaption: String
+    let cleanerLogsCaption: String
+    let cleanerDeveloperCaption: String
+    let cleanerLoginItemsCaption: String
+    let cleanerLeftoversCaption: String
+    let cleanerOtherCachesCaption: String
+    let cleanerCleanSizeFormat: String      // + size string
+    let cleanerScheduleTitle: String
+    let cleanerScheduleOff: String
+    let cleanerScheduleDaily: String
+    let cleanerScheduleWeekly: String
+    let cleanerScheduleCaption: String
+    let cleanerScheduleLastFormat: String   // + size string
+    let cleanerAutoNotificationFormat: String  // + size string
+    let cleanerScheduleNextFormat: String   // + relative date and time
+    let cleanerScheduleRanFormat: String    // + relative date and time
+    let cleanerScheduleNotifyToggle: String
+    let cleanerNotifDenied: String
+    let cleanerNotifOpenSettings: String
 }
 
 // MARK: - Português (Brasil)
@@ -1060,6 +1131,9 @@ extension Strings {
         smoothScrollName: "Rolagem suave",
         smoothScrollCaption: "Transforma cada passo da rodinha do mouse em um deslize curto e macio. O trackpad não muda.",
         smoothScrollStepLabel: "Distância por passo",
+        mouseNavigationSection: "Navegação",
+        mouseNavigationEnable: "Usar botões laterais para voltar e avançar",
+        mouseNavigationCaption: "Converte os botões Voltar e Avançar do mouse em comandos de navegação no Finder, navegadores e apps compatíveis.",
         middleClickSection: "Botão do meio",
         middleClickEnable: "Clique com três dedos vira botão do meio",
         middleClickEnableCaption: "Pressionar o trackpad com três dedos funciona como o clique da rodinha do mouse: abre links em nova aba, fecha abas e tudo mais que o botão do meio faz.",
@@ -1099,11 +1173,13 @@ extension Strings {
 
         switcherSection: "Alternador de apps",
         switcherEnable: "Usar o alternador do Vorssaint",
-        switcherEnableCaption: "Troque de janela vendo miniaturas reais, inclusive entre várias janelas do mesmo app.",
+        switcherEnableCaption: "Troque de app ou janela, inclusive janelas minimizadas e várias janelas do mesmo app.",
         switcherUsageHint: "Segure o atalho para navegar; solte para ativar a janela. Shift ou ← volta; Q fecha o app selecionado; Esc cancela.",
         switcherNoWindows: "Nenhuma janela aberta",
         switcherIconRowMode: "Mostrar ⌘Tab com ícones grandes",
         switcherIconRowModeCaption: "Mostra um ícone por app com os previews das janelas do app acima.",
+        switcherSimpleMode: "Alternador simples",
+        switcherSimpleModeCaption: "Mostra ícones de apps e títulos das janelas, sem previews nem captura da tela pelo alternador.",
         switcherShortcutHintApps: "Apps",
         switcherShortcutHintWindows: "Janelas",
         switcherWindowShortcutCaption: "Com o seletor aberto, pula entre as janelas do app selecionado.",
@@ -1373,6 +1449,16 @@ extension Strings {
         shelfDropZoneCaption: "Ao arrastar um arquivo, a área aparece embaixo do ícone na barra de menus. O que você soltar fica guardado ali, num botão que você encolhe e abre com um clique e que some quando a área fica vazia.",
         shelfDropZoneLabel: "Solte aqui",
         shelfCollapse: "Encolher",
+        shelfBehaviorTitle: "Depois de usar",
+        shelfCloseAfterDrop: "Fechar depois de soltar em outro app",
+        shelfCloseAfterDropCaption: "Fecha a área quando o destino aceita os itens. O alfinete no painel a mantém aberta.",
+        shelfRemoveAfterDrop: "Remover itens depois de soltar",
+        shelfRemoveAfterDropCaption: "Itens aceitos por outro app saem da área. Desative para manter uma cópia nela.",
+        shelfExclusionsTitle: "Exceções automáticas",
+        shelfExclusionsEmpty: "Nenhum app adicionado.",
+        shelfExclusionsCaption: "Sacudir e a área da barra de menus não abrem durante arrastes iniciados nesses apps. O atalho e Abrir agora continuam funcionando.",
+        shelfPin: "Manter aberta",
+        shelfUnpin: "Deixar fechar após o uso",
         extraBrightnessName: "Brilho extra",
         extraBrightnessCaption: "Usa a reserva HDR da tela para passar do brilho máximo. Consome mais bateria e o Mac pode esquentar.",
         extraBrightnessLevelLabel: "Intensidade",
@@ -1386,8 +1472,11 @@ extension Strings {
         shelfClearAll: "Limpar tudo",
         shelfRemoveSelected: "Remover selecionados",
         shelfSelectedFormat: "%d selecionados",
-        shelfHint: "Clique para selecionar. Arraste para fora para usar.",
+        shelfHint: "Clique para selecionar. Arraste para usar ou clique com o botão direito para mais ações.",
         shelfItemImage: "Imagem",
+        shelfActionOpen: "Abrir",
+        shelfActionOpenWith: "Abrir com",
+        shelfActionAirDrop: "Compartilhar por AirDrop",
 
         breakdownMeasuring: "Medindo…",
 
@@ -1689,7 +1778,56 @@ extension Strings {
         shortcutConflictFormat: "Este atalho já está em uso por %@.",
         shortcutUnavailable: "O macOS recusou este atalho. Escolha outro.",
         shelfShortcutToggle: "Atalho da área temporária",
-        switcherUsageHintFormat: "Segure %@ para navegar; solte para ativar a janela. Shift ou ← volta; Q fecha o app selecionado; Esc cancela."
+        switcherUsageHintFormat: "Segure %@ para navegar; solte para ativar a janela. Shift ou ← volta; Q fecha o app selecionado; Esc cancela.",
+        musicBlockSection: "Teclas de mídia",
+        musicBlockTitle: "Impedir que o Música abra sozinho",
+        musicBlockCaption: "O app Música deixa de abrir ao tocar nas teclas de mídia. Desative para voltar a usar o Música.",
+        musicBlockReplacementLabel: "Abrir no lugar",
+        musicBlockReplacementNone: "Nenhum",
+        musicBlockChooseApp: "Escolher app…",
+        cleanerName: "Limpeza",
+        cleanerIntroTitle: "Limpe o lixo do Mac",
+        cleanerIntroCaption: "Procura restos de apps desinstalados, caches, registros e a Lixeira. Você revisa tudo antes e os itens removidos vão para a Lixeira.",
+        cleanerScan: "Verificar",
+        cleanerScanning: "Verificando…",
+        cleanerCleaning: "Limpando…",
+        cleanerCatLeftovers: "Restos de apps desinstalados",
+        cleanerCatLoginItems: "Itens de início órfãos",
+        cleanerCatCaches: "Caches",
+        cleanerCatLogs: "Registros",
+        cleanerCatDeveloper: "Lixo de desenvolvimento",
+        cleanerCatTrash: "Lixeira",
+        cleanerLeftoversNote: "Encontrados por análise e começam desmarcados. Confira o caminho antes de marcar.",
+        cleanerLoginItemsNote: "A entrada em Itens de Início some depois de reiniciar o Mac.",
+        cleanerTrashNote: "Esvaziar a Lixeira é permanente.",
+        cleanerNothingFound: "Nada para limpar. Seu Mac está em ordem.",
+        cleanerClean: "Limpar",
+        cleanerDoneNote: "Os itens foram para a Lixeira e podem ser recuperados de lá.",
+        cleanerAgain: "Verificar de novo",
+        cleanerRevealInFinder: "Mostrar no Finder",
+        cleanerPanelCaption: "Restos de apps, caches e logs",
+        cleanerSafeSection: "Limpeza segura",
+        cleanerOptionalSection: "Opcional, revise antes",
+        cleanerCatOtherCaches: "Outros caches",
+        cleanerCachesCaption: "Arquivos temporários que os apps refazem sozinhos.",
+        cleanerLogsCaption: "Registros antigos de diagnóstico.",
+        cleanerDeveloperCaption: "Restos de compilações e simuladores do Xcode.",
+        cleanerLoginItemsCaption: "Entradas de início deixadas por apps que não existem mais.",
+        cleanerLeftoversCaption: "Arquivos deixados por apps que você desinstalou.",
+        cleanerOtherCachesCaption: "Seguro apagar, nada quebra. Apps podem abrir mais devagar na primeira vez e conteúdo baixado, como músicas offline, baixa de novo.",
+        cleanerCleanSizeFormat: "Limpar %@",
+        cleanerScheduleTitle: "Limpeza automática",
+        cleanerScheduleOff: "Desativada",
+        cleanerScheduleDaily: "Diária",
+        cleanerScheduleWeekly: "Semanal",
+        cleanerScheduleCaption: "Limpa sozinha só a parte segura no horário escolhido e manda tudo para a Lixeira.",
+        cleanerScheduleLastFormat: "A última limpeza automática liberou %@.",
+        cleanerAutoNotificationFormat: "%@ liberados e enviados para a Lixeira.",
+        cleanerScheduleNextFormat: "Próxima limpeza %@.",
+        cleanerScheduleRanFormat: "Última limpeza automática %@.",
+        cleanerScheduleNotifyToggle: "Avisar quando terminar",
+        cleanerNotifDenied: "As notificações do Vorssaint estão desativadas no sistema.",
+        cleanerNotifOpenSettings: "Abrir Ajustes de Notificações…"
     )
 }
 
@@ -1838,6 +1976,9 @@ extension Strings {
         smoothScrollName: "Smooth scrolling",
         smoothScrollCaption: "Turns each mouse wheel step into a short, gentle glide. The trackpad is not affected.",
         smoothScrollStepLabel: "Distance per step",
+        mouseNavigationSection: "Navigation",
+        mouseNavigationEnable: "Use side buttons for Back and Forward",
+        mouseNavigationCaption: "Turns the mouse Back and Forward buttons into navigation commands in Finder, browsers and compatible apps.",
         middleClickSection: "Middle click",
         middleClickEnable: "Three-finger click acts as middle click",
         middleClickEnableCaption: "Pressing the trackpad with three fingers works like a mouse wheel click: open links in a new tab, close tabs and everything else the middle button does.",
@@ -1877,11 +2018,13 @@ extension Strings {
 
         switcherSection: "App switcher",
         switcherEnable: "Use the Vorssaint switcher",
-        switcherEnableCaption: "Switch windows with real thumbnails, including between multiple windows of the same app.",
+        switcherEnableCaption: "Switch between apps and windows, including minimized windows and multiple windows from the same app.",
         switcherUsageHint: "Hold the shortcut to navigate; release to activate the window. Shift or ← goes back; Q quits the selected app; Esc cancels.",
         switcherNoWindows: "No open windows",
         switcherIconRowMode: "Show ⌘Tab with large icons",
         switcherIconRowModeCaption: "Shows one icon per app with that app's window previews above it.",
+        switcherSimpleMode: "Simple app switcher",
+        switcherSimpleModeCaption: "Shows app icons and window titles, without previews or screen capture by the switcher.",
         switcherShortcutHintApps: "Apps",
         switcherShortcutHintWindows: "Windows",
         switcherWindowShortcutCaption: "While the switcher is open, jumps between the selected app's windows.",
@@ -2151,6 +2294,16 @@ extension Strings {
         shelfDropZoneCaption: "While you drag a file, the shelf appears below the menu bar icon. Whatever you drop is kept right there, in a button you shrink and open with a click that goes away once the shelf is empty.",
         shelfDropZoneLabel: "Drop here",
         shelfCollapse: "Collapse",
+        shelfBehaviorTitle: "After use",
+        shelfCloseAfterDrop: "Close after dropping into another app",
+        shelfCloseAfterDropCaption: "Closes the shelf when the destination accepts the items. The pin in the panel keeps it open.",
+        shelfRemoveAfterDrop: "Remove items after dropping",
+        shelfRemoveAfterDropCaption: "Items accepted by another app leave the shelf. Turn this off to keep a copy there.",
+        shelfExclusionsTitle: "Automatic exceptions",
+        shelfExclusionsEmpty: "No apps added.",
+        shelfExclusionsCaption: "Shake and the menu bar drop zone stay off for drags started in these apps. The shortcut and Open now still work.",
+        shelfPin: "Keep open",
+        shelfUnpin: "Allow closing after use",
         extraBrightnessName: "Extra brightness",
         extraBrightnessCaption: "Uses the display's HDR headroom to go past the maximum brightness. Uses more battery and the Mac can run warm.",
         extraBrightnessLevelLabel: "Intensity",
@@ -2164,8 +2317,11 @@ extension Strings {
         shelfClearAll: "Clear all",
         shelfRemoveSelected: "Remove selected",
         shelfSelectedFormat: "%d selected",
-        shelfHint: "Click to select. Drag out to use.",
+        shelfHint: "Click to select. Drag out to use or right-click for more actions.",
         shelfItemImage: "Image",
+        shelfActionOpen: "Open",
+        shelfActionOpenWith: "Open With",
+        shelfActionAirDrop: "Share with AirDrop",
 
         breakdownMeasuring: "Measuring…",
 
@@ -2467,6 +2623,55 @@ extension Strings {
         shortcutConflictFormat: "This shortcut is already used by %@.",
         shortcutUnavailable: "macOS rejected this shortcut. Choose another one.",
         shelfShortcutToggle: "Shelf shortcut",
-        switcherUsageHintFormat: "Hold %@ to navigate; release to activate the window. Shift or ← goes back; Q quits the selected app; Esc cancels."
+        switcherUsageHintFormat: "Hold %@ to navigate; release to activate the window. Shift or ← goes back; Q quits the selected app; Esc cancels.",
+        musicBlockSection: "Media keys",
+        musicBlockTitle: "Stop Music from opening on its own",
+        musicBlockCaption: "The Music app no longer opens when you press the media keys. Turn this off to use Music again.",
+        musicBlockReplacementLabel: "Open instead",
+        musicBlockReplacementNone: "None",
+        musicBlockChooseApp: "Choose app…",
+        cleanerName: "Cleaner",
+        cleanerIntroTitle: "Clean up your Mac",
+        cleanerIntroCaption: "Scans for leftovers from uninstalled apps, caches, logs and the Trash. You review everything first and removed items go to the Trash.",
+        cleanerScan: "Scan",
+        cleanerScanning: "Scanning…",
+        cleanerCleaning: "Cleaning…",
+        cleanerCatLeftovers: "Leftovers from uninstalled apps",
+        cleanerCatLoginItems: "Orphaned startup items",
+        cleanerCatCaches: "Caches",
+        cleanerCatLogs: "Logs",
+        cleanerCatDeveloper: "Developer junk",
+        cleanerCatTrash: "Trash",
+        cleanerLeftoversNote: "Found by analysis and left unchecked. Check the path before ticking.",
+        cleanerLoginItemsNote: "The entry under Login Items disappears after restarting the Mac.",
+        cleanerTrashNote: "Emptying the Trash is permanent.",
+        cleanerNothingFound: "Nothing to clean. Your Mac is tidy.",
+        cleanerClean: "Clean",
+        cleanerDoneNote: "Items went to the Trash and can be recovered from there.",
+        cleanerAgain: "Scan again",
+        cleanerRevealInFinder: "Reveal in Finder",
+        cleanerPanelCaption: "App leftovers, caches and logs",
+        cleanerSafeSection: "Safe cleanup",
+        cleanerOptionalSection: "Optional, review first",
+        cleanerCatOtherCaches: "Other caches",
+        cleanerCachesCaption: "Temporary files apps rebuild on their own.",
+        cleanerLogsCaption: "Old diagnostic logs.",
+        cleanerDeveloperCaption: "Xcode build and simulator leftovers.",
+        cleanerLoginItemsCaption: "Startup entries left by apps that no longer exist.",
+        cleanerLeftoversCaption: "Files left behind by apps you uninstalled.",
+        cleanerOtherCachesCaption: "Safe to remove, nothing breaks. Apps may open slower once and downloaded content, like offline music, downloads again.",
+        cleanerCleanSizeFormat: "Clean %@",
+        cleanerScheduleTitle: "Automatic cleanup",
+        cleanerScheduleOff: "Off",
+        cleanerScheduleDaily: "Daily",
+        cleanerScheduleWeekly: "Weekly",
+        cleanerScheduleCaption: "Cleans only the safe part on its own at the chosen time and sends everything to the Trash.",
+        cleanerScheduleLastFormat: "The last automatic cleanup freed %@.",
+        cleanerAutoNotificationFormat: "%@ freed and sent to the Trash.",
+        cleanerScheduleNextFormat: "Next cleanup %@.",
+        cleanerScheduleRanFormat: "Last automatic cleanup %@.",
+        cleanerScheduleNotifyToggle: "Notify when done",
+        cleanerNotifDenied: "Vorssaint notifications are turned off in the system.",
+        cleanerNotifOpenSettings: "Open Notification Settings…"
     )
 }

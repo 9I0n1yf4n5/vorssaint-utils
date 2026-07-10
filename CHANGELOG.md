@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.11] - 2026-07-10
+
+### Summary
+Vorssaint 3.1.11 adds Cleaner, a simpler switcher, more useful Shelf
+controls, sixth screen layouts and mouse side button navigation. It also
+keeps extra brightness steady, blocks unwanted Music launches and lets
+paste as plain text use Command V.
+
+### Added
+- The Cleaner finds leftovers from uninstalled apps, caches and logs.
+  You review everything first, removed items go
+  to the Trash, and the safe part can also run on its own daily or
+  weekly. In the quick panel and the menu bar panel.
+- Stop Music from opening on its own. With the option on, pressing a
+  media key no longer brings up the Music app, and another app of your
+  choice can open instead. Off by default, in the General settings.
+- The app switcher has a simple app layout with window titles but no
+  previews or screen capture, while still restoring minimized windows.
+  Off by default in the App Switcher settings.
+- Window Layout can place the active window in any cell of a six part
+  grid. Each action can receive its own shortcut in Settings.
+- Mouse side buttons can navigate back and forward in Finder, browsers
+  and compatible apps. Off by default in Mouse settings and the panel.
+
+### Changed
+- The Shelf can close and remove items after a successful drop, stay open
+  when pinned and ignore automatic opening in chosen apps. File tiles also
+  offer Open With and AirDrop from the right click menu.
+
+### Fixed
+- Extra brightness no longer fades back a moment after turning on. The
+  boost now holds steady and adapts to what the display can sustain.
+- Paste as plain text now works when its shortcut is set to Command V.
+
 ## [3.1.10] - 2026-07-09
 
 ### Summary

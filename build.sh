@@ -108,6 +108,7 @@ if (( TEST )); then
         Sources/Vorssaint/Services/DockClick/DockClickSupport.swift \
         Sources/Vorssaint/Services/Finder/CutPasteProgressSupport.swift \
         Sources/Vorssaint/Services/MiddleClick/MiddleClickSupport.swift \
+        Sources/Vorssaint/Services/MouseNavigation/MouseNavigationSupport.swift \
         Sources/Vorssaint/Services/QuickTools/QuickToolsSupport.swift \
         Sources/Vorssaint/Services/KeyboardDebounce/KeyboardDebounceSupport.swift \
         Sources/Vorssaint/Services/ScrollInverterSupport.swift \
@@ -124,6 +125,9 @@ if (( TEST )); then
         Sources/Vorssaint/Services/WindowLayout/WindowLayoutSupport.swift \
         Sources/Vorssaint/Services/CleaningMode/CleaningUnlockCounter.swift \
         Sources/Vorssaint/Services/Display/ExtraBrightnessSupport.swift \
+        Sources/Vorssaint/Services/Cleaner/CleanerSupport.swift \
+        Sources/Vorssaint/Services/Cleaner/CleanerPolicy.swift \
+        Sources/Vorssaint/Services/Cleaner/CleanerSchedule.swift \
         Tests/MetricsTests.swift \
         -o build/metrics-tests
     ./build/metrics-tests

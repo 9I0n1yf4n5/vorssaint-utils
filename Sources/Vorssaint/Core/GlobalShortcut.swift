@@ -207,6 +207,13 @@ struct GlobalShortcut: Equatable, Hashable {
         modifiers.carbonFlags
     }
 
+    /// Paste as plain text ultimately posts the standard paste command. When
+    /// that same command is its configured global shortcut, the registration
+    /// must be released briefly or it catches the synthesized paste again.
+    var isStandardPasteCommand: Bool {
+        keyCode == Int64(kVK_ANSI_V) && modifiers == [.command]
+    }
+
     /// `tolerating` lists modifiers that may be held beyond the shortcut's own
     /// without breaking the match. The switcher session passes its opening
     /// shortcut's modifiers here: they are necessarily still down while the

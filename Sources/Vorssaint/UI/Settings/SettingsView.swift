@@ -47,7 +47,8 @@ struct SettingsView: View {
         [
             (categories.essentials, [
                 SidebarItem(page: .general, title: l10n.s.tabGeneral, icon: "gearshape",
-                            keywords: [l10n.s.launchAtLogin, l10n.s.languageLabel, l10n.s.showMenuBarIcon]),
+                            keywords: [l10n.s.launchAtLogin, l10n.s.languageLabel, l10n.s.showMenuBarIcon,
+                                       l10n.s.musicBlockTitle, l10n.s.musicBlockSection]),
                 SidebarItem(page: .energy, title: l10n.s.tabEnergy, icon: "bolt.fill",
                             keywords: [l10n.s.keepAwakeTitle, l10n.s.clamshellTitle,
                                        l10n.s.defaultDurationLabel, l10n.s.extraBrightnessName]),
@@ -58,7 +59,7 @@ struct SettingsView: View {
             (categories.windowsControls, [
                 SidebarItem(page: .mouse, title: l10n.s.tabMouse, icon: "computermouse",
                             keywords: [l10n.s.invertMouseScroll, l10n.s.middleClickTapPicker,
-                                       l10n.s.smoothScrollName]),
+                                       l10n.s.smoothScrollName, l10n.s.mouseNavigationEnable]),
                 SidebarItem(page: .switcher, title: l10n.s.tabSwitcher, icon: "rectangle.on.rectangle",
                             keywords: [l10n.s.switcherEnable, l10n.s.dockClickMinimize,
                                        l10n.s.dockClickCycleWindows]),
@@ -168,6 +169,8 @@ struct GeneralSettings: View {
     @State private var loginError: String?
     @AppStorage(DefaultsKey.hotkeyEnabled) private var hotkeyEnabled = true
     @AppStorage(DefaultsKey.showCountdown) private var showCountdown = false
+    @AppStorage(DefaultsKey.musicBlockEnabled) private var musicBlockEnabled = false
+    @AppStorage(DefaultsKey.musicBlockReplacementPath) private var musicBlockReplacementPath = ""
 
     var body: some View {
         Form {
@@ -223,8 +226,53 @@ struct GeneralSettings: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section(l10n.s.musicBlockSection) {
+                Toggle(l10n.s.musicBlockTitle, isOn: $musicBlockEnabled)
+                    .onChange(of: musicBlockEnabled) { _, _ in
+                        MusicLaunchBlocker.shared.syncWithPreferences()
+                    }
+                if musicBlockEnabled {
+                    HStack {
+                        Text(l10n.s.musicBlockReplacementLabel)
+                        Spacer()
+                        Text(musicBlockReplacementName)
+                            .foregroundStyle(.secondary)
+                        Button(l10n.s.musicBlockChooseApp) { chooseMusicReplacement() }
+                        if !musicBlockReplacementPath.isEmpty {
+                            Button {
+                                musicBlockReplacementPath = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                SettingsCaptionText(l10n.s.musicBlockCaption)
+            }
         }
         .formStyle(.grouped)
+    }
+
+    private var musicBlockReplacementName: String {
+        guard !musicBlockReplacementPath.isEmpty else { return l10n.s.musicBlockReplacementNone }
+        let name = FileManager.default.displayName(atPath: musicBlockReplacementPath)
+        return (name as NSString).deletingPathExtension
+    }
+
+    private func chooseMusicReplacement() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        // Picking the blocked app itself would start a launch-and-kill loop.
+        if let bundleID = Bundle(url: url)?.bundleIdentifier,
+           MusicLaunchBlocker.blockedBundleIDs.contains(bundleID) { return }
+        musicBlockReplacementPath = url.path
     }
 }
 
@@ -442,10 +490,12 @@ struct MouseSettings: View {
     @ObservedObject private var permissions = Permissions.shared
     @ObservedObject private var inverter = ScrollInverter.shared
     @ObservedObject private var smoothScroll = SmoothScrollService.shared
+    @ObservedObject private var mouseNavigation = MouseNavigationService.shared
     @ObservedObject private var middleClick = MiddleClickService.shared
     @AppStorage(DefaultsKey.scrollInverterEnabled) private var inverterEnabled = false
     @AppStorage(DefaultsKey.smoothScrollEnabled) private var smoothScrollEnabled = false
     @AppStorage(DefaultsKey.smoothScrollStep) private var smoothScrollStep = SmoothScrollSupport.defaultStep
+    @AppStorage(DefaultsKey.mouseNavigationEnabled) private var mouseNavigationEnabled = false
     @AppStorage(DefaultsKey.middleClickEnabled) private var middleClickEnabled = false
     @AppStorage(DefaultsKey.middleClickTapFingers) private var middleClickTapFingers = 0
 
@@ -494,6 +544,20 @@ struct MouseSettings: View {
                     }
                 }
             }
+            Section(l10n.s.mouseNavigationSection) {
+                Toggle(l10n.s.mouseNavigationEnable, isOn: $mouseNavigationEnabled)
+                    .onChange(of: mouseNavigationEnabled) { _, _ in
+                        MouseNavigationService.shared.syncWithPreferences()
+                    }
+                Text(l10n.s.mouseNavigationCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if mouseNavigationEnabled, mouseNavigation.isRunning {
+                    Label(l10n.s.scrollActiveNow, systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+            }
             Section(l10n.s.middleClickSection) {
                 Toggle(l10n.s.middleClickEnable, isOn: $middleClickEnabled)
                     .onChange(of: middleClickEnabled) { _, _ in
@@ -521,7 +585,8 @@ struct MouseSettings: View {
                         .foregroundStyle(.orange)
                 }
             }
-            if inverterEnabled || smoothScrollEnabled || middleClickEnabled, !permissions.accessibility {
+            if inverterEnabled || smoothScrollEnabled || mouseNavigationEnabled || middleClickEnabled,
+               !permissions.accessibility {
                 Section(l10n.s.permissionRequired) {
                     PermissionRow(kind: .accessibility)
                 }
@@ -549,6 +614,7 @@ struct SwitcherSettings: View {
     @ObservedObject private var dockPreview = DockPreviewService.shared
     @AppStorage(DefaultsKey.switcherEnabled) private var switcherEnabled = true
     @AppStorage(DefaultsKey.switcherIconRowMode) private var switcherIconRowMode = false
+    @AppStorage(DefaultsKey.switcherSimpleMode) private var switcherSimpleMode = false
     @AppStorage(DefaultsKey.switcherMergeTabs) private var switcherMergeTabs = false
     @AppStorage(DefaultsKey.switcherShowWindowlessFinder) private var switcherShowWindowlessFinder = true
     @AppStorage(DefaultsKey.dockPreviewEnabled) private var dockPreviewEnabled = false
@@ -584,8 +650,17 @@ struct SwitcherSettings: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                Toggle(l10n.s.switcherIconRowMode, isOn: $switcherIconRowMode)
+                Toggle(l10n.s.switcherSimpleMode, isOn: $switcherSimpleMode)
                     .disabled(!switcherEnabled)
+                    .onChange(of: switcherSimpleMode) { _, _ in
+                        AppSwitcher.shared.syncWithPreferences()
+                    }
+                Text(l10n.s.switcherSimpleModeCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Toggle(l10n.s.switcherIconRowMode, isOn: $switcherIconRowMode)
+                    .disabled(!switcherEnabled || switcherSimpleMode)
                     .onChange(of: switcherIconRowMode) { _, _ in
                         AppSwitcher.shared.syncWithPreferences()
                     }
@@ -650,7 +725,10 @@ struct SwitcherSettings: View {
                         PermissionRow(kind: .accessibility)
                     }
                 }
-                if !permissions.screenRecording {
+                if !permissions.screenRecording,
+                   SwitcherSupport.needsScreenRecording(switcherEnabled: switcherEnabled,
+                                                        simpleMode: switcherSimpleMode,
+                                                        dockPreviewEnabled: dockPreviewEnabled) {
                     Section {
                         PermissionRow(kind: .screenRecording)
                     }
