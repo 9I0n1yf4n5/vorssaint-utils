@@ -109,7 +109,7 @@ The rest bends the same way: panel sections reorder and hide, the compact layout
 - **Uninstaller.** Drop an app in and take its caches, preferences and logs to the Trash with it.
 - **Media tools.** Compress videos and images, make GIFs and extract text, all locally.
 - **Homebrew manager.** Search, install and remove formulae and casks without opening a terminal.
-- **Cleaning Mode.** Locks the keyboard so you can wipe it without typing a novel.
+- **Cleaning Mode.** Locks the keyboard and blacks out every display while you clean.
 
 ### Energy and display
 

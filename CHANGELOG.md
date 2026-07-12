@@ -16,6 +16,7 @@ or leaves fullscreen.
   bar panel and in Settings. The keyboard brightness keys can follow the
   pointer, changing whichever display it is on. Turn it on in Settings
   under Energy.
+- Cleaning Mode now blacks out every display while the keyboard is locked.
 - Korean is now available throughout the app and can be selected in Settings.
   Thanks to hyo.c (@pshyomin) for the translation.
 
