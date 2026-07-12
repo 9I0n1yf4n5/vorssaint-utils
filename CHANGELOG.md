@@ -17,6 +17,7 @@ or leaves fullscreen.
   pointer, changing whichever display it is on. Turn it on in Settings
   under Energy.
 - Korean is now available throughout the app and can be selected in Settings.
+  Thanks to hyo.c (@pshyomin) for the translation.
 
 ### Fixed
 - Dock click to minimize now reacts immediately when an app ignores its
