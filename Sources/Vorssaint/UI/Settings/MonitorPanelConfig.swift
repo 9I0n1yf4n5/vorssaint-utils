@@ -37,6 +37,7 @@ struct MonitorPanelConfig: View {
     @AppStorage(DefaultsKey.monitorPwrSystem) private var pwrSystem = true
     @AppStorage(DefaultsKey.monitorPwrAdapter) private var pwrAdapter = true
     @AppStorage(DefaultsKey.monitorPwrBattery) private var pwrBattery = true
+    @AppStorage(DefaultsKey.monitorPwrTimeRemaining) private var pwrTimeRemaining = true
     @AppStorage(DefaultsKey.monitorPwrHealth) private var pwrHealth = true
 
     @AppStorage(DefaultsKey.monitorShowMixer) private var showMixer = true
@@ -85,6 +86,7 @@ struct MonitorPanelConfig: View {
                 Toggle(l10n.s.powerSystem, isOn: $pwrSystem)
                 Toggle(l10n.s.powerAdapter, isOn: $pwrAdapter)
                 Toggle(l10n.s.powerBattery, isOn: $pwrBattery)
+                Toggle(FeatureStrings.batteryTime(l10n.language).title, isOn: $pwrTimeRemaining)
                 Toggle(l10n.s.powerHealth, isOn: $pwrHealth)
             }
         }

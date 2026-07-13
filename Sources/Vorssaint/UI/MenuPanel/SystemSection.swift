@@ -35,6 +35,7 @@ struct SystemSection: View {
     @AppStorage(DefaultsKey.menuBarBatteryTemperature) private var menuBarBatteryTemperature = false
     @AppStorage(DefaultsKey.menuBarNetwork) private var menuBarNetwork = false
     @AppStorage(DefaultsKey.menuBarBattery) private var menuBarBattery = false
+    @AppStorage(DefaultsKey.menuBarBatteryTime) private var menuBarBatteryTime = false
     @AppStorage(DefaultsKey.menuBarPeripheralBattery) private var menuBarPeripheralBattery = false
     @AppStorage(DefaultsKey.menuBarPower) private var menuBarPower = false
     @AppStorage(DefaultsKey.menuBarSeparateMetrics) private var separateMenuBarMetrics = false
@@ -112,6 +113,7 @@ struct SystemSection: View {
         menuBarBatteryTemperature ||
         menuBarNetwork ||
         menuBarBattery ||
+        menuBarBatteryTime ||
         menuBarPeripheralBattery ||
         menuBarPower
     }

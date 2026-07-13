@@ -5,6 +5,7 @@ import Combine
 import Darwin
 import Foundation
 import IOKit
+import IOKit.ps
 
 /// Memory pressure as reported by the kernel, mapped to the traffic-light
 /// indicator shown in the panel.
@@ -160,6 +161,7 @@ final class SystemMonitor: ObservableObject {
     private var diskWriteHistory: MetricHistory
     private var powerHistory: MetricHistory
     private var batteryHistory: MetricHistory
+    private var powerSourceRunLoopSource: CFRunLoopSource?
 
     private init() {
         cpuHistory = MetricHistory(capacity: historyCapacity)
@@ -171,9 +173,35 @@ final class SystemMonitor: ObservableObject {
         diskWriteHistory = MetricHistory(capacity: historyCapacity)
         powerHistory = MetricHistory(capacity: historyCapacity)
         batteryHistory = MetricHistory(capacity: historyCapacity)
+        installPowerSourceObserver()
+    }
+
+    deinit {
+        if let powerSourceRunLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), powerSourceRunLoopSource, .defaultMode)
+        }
     }
 
     // MARK: - Lifecycle
+
+    /// The same system notification used by the reference battery monitor.
+    /// It removes the normal background sampling delay after unplugging,
+    /// charging changes or a newly calculated time-to-empty value.
+    private func installPowerSourceObserver() {
+        let context = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
+        powerSourceRunLoopSource = IOPSNotificationCreateRunLoopSource({ context in
+            guard let context else { return }
+            let monitor = Unmanaged<SystemMonitor>.fromOpaque(context).takeUnretainedValue()
+            DispatchQueue.main.async {
+                guard monitor.shouldRun,
+                      monitor.currentPlan(defaults: .standard).needPower else { return }
+                monitor.refresh()
+            }
+        }, context).takeRetainedValue()
+        if let powerSourceRunLoopSource {
+            CFRunLoopAddSource(CFRunLoopGetMain(), powerSourceRunLoopSource, .defaultMode)
+        }
+    }
 
     /// A full monitor surface became visible (Settings preview or onboarding).
     func panelDidAppear() {
@@ -408,6 +436,7 @@ final class SystemMonitor: ObservableObject {
         plan.needPower = panelNeedsPower || panelBattery
             || defaults.bool(forKey: DefaultsKey.menuBarPower)
             || defaults.bool(forKey: DefaultsKey.menuBarBattery)
+            || defaults.bool(forKey: DefaultsKey.menuBarBatteryTime)
             || alertBattery
         plan.needPeripheralBattery = menuPanelNeeds.peripheralBattery
             || defaults.bool(forKey: DefaultsKey.menuBarPeripheralBattery)

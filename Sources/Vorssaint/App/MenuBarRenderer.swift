@@ -5,7 +5,7 @@ import AppKit
 
 /// A live reading the user can pin next to the menu bar icon.
 enum MenuBarMetric: String, CaseIterable, Identifiable {
-    case cpu, gpu, memory, cpuTemperature, gpuTemperature, batteryTemperature, network, diskUsage, diskActivity, battery, peripheralBattery, power
+    case cpu, gpu, memory, cpuTemperature, gpuTemperature, batteryTemperature, network, diskUsage, diskActivity, battery, batteryTime, peripheralBattery, power
 
     var id: String { rawValue }
 
@@ -21,6 +21,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         case .diskUsage: return DefaultsKey.menuBarDiskUsage
         case .diskActivity: return DefaultsKey.menuBarDiskActivity
         case .battery: return DefaultsKey.menuBarBattery
+        case .batteryTime: return DefaultsKey.menuBarBatteryTime
         case .peripheralBattery: return DefaultsKey.menuBarPeripheralBattery
         case .power: return DefaultsKey.menuBarPower
         }
@@ -38,6 +39,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         case .diskUsage: return "internaldrive"
         case .diskActivity: return "internaldrive.fill"
         case .battery: return "battery.100"
+        case .batteryTime: return "clock"
         case .peripheralBattery: return "keyboard"
         case .power: return "powerplug.fill"
         }
@@ -55,6 +57,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         case .diskUsage: return strings.monitorItemDiskUsage
         case .diskActivity: return strings.monitorItemDiskActivity
         case .battery: return strings.batteryLabel
+        case .batteryTime: return FeatureStrings.batteryTime(L10n.shared.language).title
         case .peripheralBattery: return strings.monitorShowPeripheralBattery
         case .power: return strings.monitorShowPowerLabel
         }
@@ -64,7 +67,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         .cpu, .cpuTemperature,
         .gpu, .gpuTemperature,
         .memory,
-        .battery, .batteryTemperature, .peripheralBattery,
+        .battery, .batteryTime, .batteryTemperature, .peripheralBattery,
         .network, .diskUsage, .diskActivity, .power,
     ]
 
@@ -88,7 +91,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         case .memory: return .monitorMemory
         case .network: return .monitorNetwork
         case .diskUsage, .diskActivity: return .monitorDisk
-        case .battery, .batteryTemperature, .peripheralBattery, .power: return .monitorPower
+        case .battery, .batteryTime, .batteryTemperature, .peripheralBattery, .power: return .monitorPower
         }
     }
 
@@ -368,6 +371,19 @@ enum MenuBarRenderer {
                                             segments: [.symbol(symbol), .text(" " + text)],
                                             width: reservedWidth(for: metric, preset: preset)))
                 }
+            case .batteryTime:
+                if let power = snapshot.power,
+                   let seconds = power.timeRemainingSeconds,
+                   let value = BatteryTimeSupport.formatted(seconds: seconds) {
+                    items.append(MetricItem(metric: metric,
+                                            segments: [.symbol(metric.symbolName), .text(" " + value)],
+                                            width: reservedWidth(for: metric, preset: preset)))
+                } else if let power = snapshot.power,
+                          power.hasBattery, !power.externalConnected, !power.isCharging {
+                    items.append(MetricItem(metric: metric,
+                                            segments: [.symbol(metric.symbolName), .text(" ...")],
+                                            width: reservedWidth(for: metric, preset: preset)))
+                }
             case .peripheralBattery:
                 if let metricValue = PeripheralBatterySupport.menuBarMetric(for: snapshot.peripheralBatteries) {
                     let text = metricValue.label + " " + metricValue.value
@@ -544,6 +560,23 @@ enum MenuBarRenderer {
                                                  isCharging: snapshot.power?.isCharging ?? false,
                                                  style: style)])
                 }
+            case .batteryTime:
+                if let power = snapshot.power,
+                   let seconds = power.timeRemainingSeconds,
+                   let value = BatteryTimeSupport.formatted(seconds: seconds) {
+                    groups.append([.metricBlock(label: "BAT",
+                                                value: value,
+                                                minimumValue: "99h 59m",
+                                                style: style,
+                                                pressure: nil)])
+                } else if let power = snapshot.power,
+                          power.hasBattery, !power.externalConnected, !power.isCharging {
+                    groups.append([.metricBlock(label: "BAT",
+                                                value: "...",
+                                                minimumValue: "99h 59m",
+                                                style: style,
+                                                pressure: nil)])
+                }
             case .peripheralBattery:
                 if let metricValue = PeripheralBatterySupport.menuBarMetric(for: snapshot.peripheralBatteries) {
                     groups.append([.metricBlock(label: metricValue.label,
@@ -610,6 +643,8 @@ enum MenuBarRenderer {
             return 15      // R1.0G + W1.0G
         case (_, .battery), (_, .power):
             return 11      // symbol + " BAT 100%" / " PWR 99W"
+        case (_, .batteryTime):
+            return 12      // clock symbol + "99h 59m"
         }
     }
 
@@ -969,6 +1004,7 @@ enum MenuBarRenderer {
         var power = PowerReading()
         power.systemWatts = 99
         power.chargePercent = 100
+        power.timeRemainingSeconds = 359_940
         power.isCharging = true
         snapshot.power = power
         snapshot.peripheralBatteries = [

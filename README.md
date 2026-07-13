@@ -65,8 +65,8 @@ The rest bends the same way: panel sections reorder and hide, the compact layout
 
 ### Know what your Mac is doing
 
-- **System monitor.** CPU, GPU, memory pressure and temperatures with history graphs, plus battery health, cycle count, power draw and which apps are burning energy right now.
-- **Menu bar readouts.** Keep the numbers you care about in the bar itself, combined or as separate items.
+- **System monitor.** CPU, GPU, memory pressure and temperatures with history graphs, plus battery health, time remaining, cycle count, power draw and which apps are burning energy right now.
+- **Menu bar readouts.** Keep the numbers you care about in the bar itself, including optional battery time remaining, combined or as separate items.
 - **Network.** Live rates, session totals and a built in speed test.
 - **Alerts.** Optional notifications for sustained CPU load, high temperature, memory pressure, low disk space and low battery.
 

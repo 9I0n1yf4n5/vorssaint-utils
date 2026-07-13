@@ -7,15 +7,18 @@ All notable changes to this project are documented here. The format follows
 ## [3.1.13]
 
 ### Summary
-Vorssaint 3.1.13 adds brightness control for all your displays, external
-monitors included. It also keeps Extra Brightness steady when video enters
-or leaves fullscreen.
+Vorssaint 3.1.13 adds brightness control for all your displays and shows the
+battery's estimated time remaining in the menu bar and Power panel. It also
+keeps Extra Brightness steady when video enters or leaves fullscreen.
 
 ### Added
 - Brightness sliders for the Mac screen and external monitors, in the menu
   bar panel and in Settings. The keyboard brightness keys can follow the
   pointer, changing whichever display it is on. Turn it on in Settings
   under Energy.
+- The battery's estimated time remaining can appear in the menu bar and the
+  Power panel. The menu bar reading is off by default and can be enabled in
+  Settings.
 - Cleaning Mode now blacks out every display while the keyboard is locked.
 - Korean is now available throughout the app and can be selected in Settings.
   Thanks to hyo.c (@pshyomin) for the translation.

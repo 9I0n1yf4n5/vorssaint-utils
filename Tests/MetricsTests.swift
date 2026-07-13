@@ -332,6 +332,31 @@ struct MetricsTests {
         expect(MaxCapacityProbe.percent(fromSystemProfilerJSON: maxCapacityUnavailableJSON) == nil,
                "battery maximum capacity ignores placeholder values")
 
+        expect(BatteryTimeSupport.remainingSeconds(timeToEmptyMinutes: 222,
+                                                   externalConnected: false,
+                                                   isCharging: false) == 13_320,
+               "battery time converts the public time-to-empty minutes")
+        expect(BatteryTimeSupport.remainingSeconds(timeToEmptyMinutes: -1,
+                                                   externalConnected: false,
+                                                   isCharging: false) == nil,
+               "battery time preserves the system calculating state")
+        expect(BatteryTimeSupport.remainingSeconds(timeToEmptyMinutes: 222,
+                                                   externalConnected: true,
+                                                   isCharging: false) == nil,
+               "battery time stays hidden on external power")
+        expect(BatteryTimeSupport.remainingSeconds(timeToEmptyMinutes: 222,
+                                                   externalConnected: false,
+                                                   isCharging: true) == nil,
+               "battery time stays hidden while charging")
+        expect(BatteryTimeSupport.remainingSeconds(timeToEmptyMinutes: 65_535,
+                                                   externalConnected: false,
+                                                   isCharging: false) == nil,
+               "battery time ignores the public unavailable sentinel")
+        expect(BatteryTimeSupport.formatted(seconds: 13_320) == "3h 42m",
+               "battery time formats hours and minutes")
+        expect(BatteryTimeSupport.formatted(seconds: 30) == "0h 1m",
+               "battery time keeps a positive final minute visible")
+
         // MARK: Peripheral battery helpers
 
         expect(PeripheralBatterySupport.percent(from: "87%") == 87,
@@ -1069,6 +1094,8 @@ struct MetricsTests {
                "menu bar GPU temperature is opt-in")
         expect(registeredDefaults[DefaultsKey.menuBarBatteryTemperature] as? Bool == false,
                "menu bar battery temperature is opt-in")
+        expect(registeredDefaults[DefaultsKey.menuBarBatteryTime] as? Bool == false,
+               "menu bar battery time is opt-in")
         expect(registeredDefaults[DefaultsKey.menuBarDiskUsage] as? Bool == false,
                "menu bar disk usage is opt-in")
         expect(registeredDefaults[DefaultsKey.menuBarDiskActivity] as? Bool == false,
@@ -1076,7 +1103,7 @@ struct MetricsTests {
         expect(registeredDefaults[DefaultsKey.menuBarPeripheralBattery] as? Bool == false,
                "menu bar peripheral battery is opt-in")
         expect(registeredDefaults[DefaultsKey.menuBarMetricOrder] as? String
-               == "cpu,cpuTemperature,gpu,gpuTemperature,memory,battery,batteryTemperature,peripheralBattery,network,diskUsage,diskActivity,power",
+               == "cpu,cpuTemperature,gpu,gpuTemperature,memory,battery,batteryTime,batteryTemperature,peripheralBattery,network,diskUsage,diskActivity,power",
                "menu bar metric order keeps temperature sensors next to their components and disk near live I/O")
         expect(registeredDefaults[DefaultsKey.menuBarCombineTemperatures] as? Bool == true,
                "menu bar combines usage and temperature by default")
@@ -1088,6 +1115,8 @@ struct MetricsTests {
                "menu bar label style defaults to compact")
         expect(registeredDefaults[DefaultsKey.menuBarMemoryStyle] as? String == "percent",
                "memory menu bar style defaults to percent")
+        expect(registeredDefaults[DefaultsKey.monitorPwrTimeRemaining] as? Bool == true,
+               "battery time is shown in the Power panel by default")
         expect(registeredDefaults[DefaultsKey.windowLayoutShortcutsEnabled] as? Bool == false,
                "window layout shortcuts stay off until enabled")
         let assignedLayoutShortcutKeys = [
@@ -1473,11 +1502,11 @@ struct MetricsTests {
         expect(Defaults.sanitizedMenuBarMemoryStyle("bad") == "percent", "invalid memory style falls back to percent")
         expect(Defaults.sanitizedMenuBarMetricOrder("cpu,gpu,memory,network,battery,power")
                == ["cpu", "gpu", "memory", "network", "battery", "power",
-                   "cpuTemperature", "gpuTemperature", "batteryTemperature", "peripheralBattery", "diskUsage", "diskActivity"],
+                   "cpuTemperature", "gpuTemperature", "batteryTime", "batteryTemperature", "peripheralBattery", "diskUsage", "diskActivity"],
                "menu bar metric order appends temperature sensors without rewriting existing saved order")
         expect(Defaults.sanitizedMenuBarMetricOrder("temperature,cpu,cpu,bad")
                == ["cpuTemperature", "gpuTemperature", "batteryTemperature",
-                   "cpu", "gpu", "memory", "battery", "peripheralBattery", "network", "diskUsage", "diskActivity", "power"],
+                   "cpu", "gpu", "memory", "battery", "batteryTime", "peripheralBattery", "network", "diskUsage", "diskActivity", "power"],
                "menu bar metric order migrates the old generic temperature value")
         expect(Defaults.sanitizedBundleIdentifierList([" com.example.One ", "", "com.example.One", "com.example.Two"])
                == ["com.example.One", "com.example.Two"],
@@ -4282,6 +4311,12 @@ struct MetricsTests {
                    "every brightness string is set for \(language.rawValue)")
             expect(brightnessValues.allSatisfy { !$0.contains("—") },
                    "no em-dash in visible brightness strings (\(language.rawValue))")
+            let batteryTimeValues = Mirror(reflecting: FeatureStrings.batteryTime(language)).children
+                .compactMap { $0.value as? String }
+            expect(!batteryTimeValues.isEmpty && batteryTimeValues.allSatisfy { !$0.isEmpty },
+                   "every battery time string is set for \(language.rawValue)")
+            expect(batteryTimeValues.allSatisfy { !$0.contains("—") },
+                   "no em-dash in visible battery time strings (\(language.rawValue))")
             let strings: Strings = {
                 switch language {
                 case .enUS: return .enUS
