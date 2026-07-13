@@ -46,6 +46,12 @@ struct HomebrewPackageUpdate: Hashable {
     }
 }
 
+enum HomebrewPackageOrdering {
+    static func updatesFirst(_ packages: [HomebrewPackage]) -> [HomebrewPackage] {
+        packages.filter(\.hasUpdateAvailable) + packages.filter { !$0.hasUpdateAvailable }
+    }
+}
+
 struct HomebrewPopularity: Hashable {
     let count: Int
     let rank: Int?

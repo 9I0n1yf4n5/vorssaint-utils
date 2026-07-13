@@ -448,6 +448,7 @@ struct Strings {
     let homebrewShellSetupButton: String
     let homebrewShellSetupOpened: String
     let homebrewRefresh: String
+    let homebrewCheckPackages: String
     let homebrewTrustTitle: String
     let homebrewTrustCaption: String
     let homebrewTrustButton: String
@@ -1322,6 +1323,7 @@ extension Strings {
         homebrewShellSetupButton: "Configurar Terminal",
         homebrewShellSetupOpened: "Comando aberto no Terminal. Depois volte aqui e clique em Atualizar.",
         homebrewRefresh: "Atualizar",
+        homebrewCheckPackages: "Verificar pacotes",
         homebrewTrustTitle: "Tap ainda não confiável",
         homebrewTrustCaption: "O Homebrew agora pede sua confirmação antes de usar taps de terceiros. Confie em %@ para continuar.",
         homebrewTrustButton: "Confiar e continuar",
@@ -2174,6 +2176,7 @@ extension Strings {
         homebrewShellSetupButton: "Set up Terminal",
         homebrewShellSetupOpened: "Command opened in Terminal. Then come back here and click Refresh.",
         homebrewRefresh: "Refresh",
+        homebrewCheckPackages: "Check packages",
         homebrewTrustTitle: "Tap not trusted yet",
         homebrewTrustCaption: "Homebrew now asks for your confirmation before using third party taps. Trust %@ to continue.",
         homebrewTrustButton: "Trust and continue",

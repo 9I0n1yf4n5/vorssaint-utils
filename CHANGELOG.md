@@ -33,6 +33,10 @@ Finder to the Volume Mixer.
 - Korean is now available throughout the app and can be selected in Settings.
   Thanks to hyo.c (@pshyomin) for the translation.
 
+### Changed
+- Package updates now stay at the top of the installed list, with clearly
+  labeled controls in the panel.
+
 ### Fixed
 - Smooth Scrolling now moves horizontally while Shift is held.
 - Dock click to minimize now reacts immediately in more apps and no longer

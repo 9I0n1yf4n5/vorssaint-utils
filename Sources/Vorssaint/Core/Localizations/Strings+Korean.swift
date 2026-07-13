@@ -328,6 +328,7 @@ extension Strings {
         homebrewShellSetupButton: "Terminal 설정",
         homebrewShellSetupOpened: "명령을 Terminal에서 열었습니다. 완료되면 여기로 돌아와 새로 고침을 클릭하세요.",
         homebrewRefresh: "새로 고침",
+        homebrewCheckPackages: "패키지 확인",
         homebrewTrustTitle: "아직 신뢰하지 않은 Tap",
         homebrewTrustCaption: "Homebrew는 타사 Tap을 사용하기 전에 확인을 요청합니다. %@을(를) 신뢰하면 계속할 수 있습니다.",
         homebrewTrustButton: "신뢰하고 계속",

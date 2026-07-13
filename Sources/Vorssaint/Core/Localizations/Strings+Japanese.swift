@@ -327,6 +327,7 @@ extension Strings {
         homebrewShellSetupButton: "Terminal を設定",
         homebrewShellSetupOpened: "コマンドを Terminal で開きました。終わったら戻って更新をクリックしてください。",
         homebrewRefresh: "更新",
+        homebrewCheckPackages: "パッケージを確認",
         homebrewTrustTitle: "まだ信頼されていないTap",
         homebrewTrustCaption: "Homebrewはサードパーティ製Tapを使う前に確認を求めるようになりました。%@を信頼すると続行できます。",
         homebrewTrustButton: "信頼して続ける",

@@ -3946,6 +3946,25 @@ struct MetricsTests {
         let noisyOutdatedPackages = (try? HomebrewParser.parseOutdatedCommandOutput(noisyOutdatedOutput)) ?? [:]
         expect(noisyOutdatedPackages["formula:fmt"]?.currentVersion == "12.2.0",
                "Homebrew outdated command output parser accepts warnings around JSON")
+        let orderingPackages = [
+            HomebrewPackage(kind: .cask, name: "alpha-tool", displayName: "Alpha Tool",
+                            desc: nil, installedVersion: "1.0", stableVersion: nil, homepage: nil),
+            HomebrewPackage(kind: .cask, name: "beta-tool", displayName: "Beta Tool",
+                            desc: nil, installedVersion: "1.0", stableVersion: nil, homepage: nil,
+                            update: HomebrewPackageUpdate(kind: .cask, name: "beta-tool",
+                                                          installedVersions: ["1.0"],
+                                                          currentVersion: "2.0", isPinned: false)),
+            HomebrewPackage(kind: .formula, name: "gamma-tool", displayName: "Gamma Tool",
+                            desc: nil, installedVersion: "1.0", stableVersion: nil, homepage: nil,
+                            update: HomebrewPackageUpdate(kind: .formula, name: "gamma-tool",
+                                                          installedVersions: ["1.0"],
+                                                          currentVersion: "2.0", isPinned: false)),
+            HomebrewPackage(kind: .formula, name: "delta-tool", displayName: "Delta Tool",
+                            desc: nil, installedVersion: "1.0", stableVersion: nil, homepage: nil)
+        ]
+        expect(HomebrewPackageOrdering.updatesFirst(orderingPackages).map(\.name)
+               == ["beta-tool", "gamma-tool", "alpha-tool", "delta-tool"],
+               "Homebrew installed packages keep all pending updates first without reordering either group")
         let searchPackages = HomebrewParser.parseSearchOutput("sample-formula\nbad token\nsample-filter\nsample-tool\n",
                                                               kind: .formula,
                                                               installed: homebrewPackages)

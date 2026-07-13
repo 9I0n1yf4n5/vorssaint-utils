@@ -327,6 +327,7 @@ extension Strings {
         homebrewShellSetupButton: "Configurer Terminal",
         homebrewShellSetupOpened: "Commande ouverte dans Terminal. Revenez ensuite ici et cliquez sur Actualiser.",
         homebrewRefresh: "Actualiser",
+        homebrewCheckPackages: "Vérifier les paquets",
         homebrewTrustTitle: "Tap pas encore approuvé",
         homebrewTrustCaption: "Homebrew demande désormais votre confirmation avant d'utiliser des taps tiers. Approuvez %@ pour continuer.",
         homebrewTrustButton: "Approuver et continuer",

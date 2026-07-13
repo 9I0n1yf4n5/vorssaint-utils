@@ -327,6 +327,7 @@ extension Strings {
         homebrewShellSetupButton: "配置终端",
         homebrewShellSetupOpened: "命令已在终端中打开。完成后请回到这里并点击刷新。",
         homebrewRefresh: "刷新",
+        homebrewCheckPackages: "检查软件包",
         homebrewTrustTitle: "Tap 尚未受信任",
         homebrewTrustCaption: "Homebrew 现在会在使用第三方 tap 前请求你的确认。信任 %@ 即可继续。",
         homebrewTrustButton: "信任并继续",

@@ -328,6 +328,7 @@ extension Strings {
         homebrewShellSetupButton: "設定終端機",
         homebrewShellSetupOpened: "指令已在終端機中開啟。完成後請返回這裡並按一下「重新整理」。",
         homebrewRefresh: "重新整理",
+        homebrewCheckPackages: "檢查套件",
         homebrewTrustTitle: "Tap 尚未受信任",
         homebrewTrustCaption: "Homebrew 現在會在使用第三方 tap 前徵求你的確認。信任 %@ 即可繼續。",
         homebrewTrustButton: "信任並繼續",

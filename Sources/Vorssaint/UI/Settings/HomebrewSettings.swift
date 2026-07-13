@@ -609,14 +609,16 @@ struct HomebrewSettings: View {
     }
 
     private var filteredInstalled: [HomebrewPackage] {
+        let packages: [HomebrewPackage]
         switch installedFilter {
         case .all:
-            return homebrew.installed
+            packages = homebrew.installed
         case .formula:
-            return homebrew.installed.filter { $0.kind == .formula }
+            packages = homebrew.installed.filter { $0.kind == .formula }
         case .cask:
-            return homebrew.installed.filter { $0.kind == .cask }
+            packages = homebrew.installed.filter { $0.kind == .cask }
         }
+        return HomebrewPackageOrdering.updatesFirst(packages)
     }
 
     private var installedCaskCount: Int {

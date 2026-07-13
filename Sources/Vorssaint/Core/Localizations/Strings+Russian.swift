@@ -328,6 +328,7 @@ extension Strings {
         homebrewShellSetupButton: "Настроить Терминал",
         homebrewShellSetupOpened: "Команда открыта в Терминале. Затем вернитесь сюда и нажмите «Обновить».",
         homebrewRefresh: "Обновить",
+        homebrewCheckPackages: "Проверить пакеты",
         homebrewTrustTitle: "Tap ещё не доверенный",
         homebrewTrustCaption: "Homebrew теперь запрашивает подтверждение перед использованием сторонних tap. Доверьтесь %@, чтобы продолжить.",
         homebrewTrustButton: "Доверять и продолжить",

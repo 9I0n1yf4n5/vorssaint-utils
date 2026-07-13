@@ -327,6 +327,7 @@ extension Strings {
         homebrewShellSetupButton: "Terminal'i ayarla",
         homebrewShellSetupOpened: "Komut Terminal'de açıldı. Sonra buraya dön ve Yenile'ye tıkla.",
         homebrewRefresh: "Yenile",
+        homebrewCheckPackages: "Paketleri denetle",
         homebrewTrustTitle: "Tap henüz güvenilir değil",
         homebrewTrustCaption: "Homebrew artık üçüncü taraf tap kullanmadan önce onayınızı istiyor. Devam etmek için %@ kaynağına güvenin.",
         homebrewTrustButton: "Güven ve devam et",
