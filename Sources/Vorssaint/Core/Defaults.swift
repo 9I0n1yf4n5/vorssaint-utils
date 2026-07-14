@@ -283,8 +283,11 @@ enum DefaultsKey {
     static let clipboardHistoryShortcutEnabled = "clipboardHistoryShortcutEnabled"
     static let clipboardHistoryShortcut = "clipboardHistoryShortcut"
 
-    // Window Layout — manual window snapping and optional global shortcuts.
+    // Window Layout — snapping, global shortcuts and optional pointer gestures.
     static let windowLayoutShortcutsEnabled = "windowLayoutShortcutsEnabled"
+    static let windowGestureEnabled = "windowGestureEnabled"
+    static let windowGestureModifiers = "windowGestureModifiers"
+    static let windowGestureRaiseWindow = "windowGestureRaiseWindow"
     static let windowLayoutShortcutLeft = "windowLayoutShortcutLeft"
     static let windowLayoutShortcutRight = "windowLayoutShortcutRight"
     static let windowLayoutShortcutTop = "windowLayoutShortcutTop"
@@ -674,6 +677,9 @@ enum Defaults {
         DefaultsKey.clipboardHistoryShortcutEnabled: true,
         DefaultsKey.clipboardHistoryShortcut: GlobalShortcut.clipboardDefault.storageValue,
         DefaultsKey.windowLayoutShortcutsEnabled: false,
+        DefaultsKey.windowGestureEnabled: false,
+        DefaultsKey.windowGestureModifiers: WindowGestureSupport.defaultModifierStorageValue,
+        DefaultsKey.windowGestureRaiseWindow: false,
         DefaultsKey.windowLayoutShortcutLeft: GlobalShortcut.windowLayoutLeftDefault.storageValue,
         DefaultsKey.windowLayoutShortcutRight: GlobalShortcut.windowLayoutRightDefault.storageValue,
         DefaultsKey.windowLayoutShortcutTop: GlobalShortcut.windowLayoutTopDefault.storageValue,

@@ -28,6 +28,9 @@ Finder to the Volume Mixer.
   Combine both conditions in Options or Energy settings.
 - Keep Awake can use the Vorssaint, coffee, eye, moon or lightbulb icon while
   active. Choose the icon and its color in Options or Energy settings.
+- Window Layout moves and resizes windows from any point with a trackpad or
+  mouse. Drag with chosen modifiers to move, add Shift to resize, or use the
+  mouse's right button. It is off by default in the panel and Settings.
 - CPU, GPU, memory and disk use can appear as compact bars in the menu bar.
   Choose Values or Bars and adjust their colors and medium and high limits in
   Monitor settings.

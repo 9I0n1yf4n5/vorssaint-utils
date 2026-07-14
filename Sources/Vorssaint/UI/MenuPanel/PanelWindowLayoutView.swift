@@ -8,6 +8,8 @@ struct PanelWindowLayoutView: View {
     @ObservedObject private var permissions = Permissions.shared
     @ObservedObject private var service = WindowLayoutService.shared
     @AppStorage(DefaultsKey.windowLayoutShortcutsEnabled) private var shortcutsEnabled = true
+    @AppStorage(DefaultsKey.windowGestureEnabled) private var gestureEnabled = false
+    @AppStorage(DefaultsKey.windowGestureModifiers) private var gestureModifiers = WindowGestureSupport.defaultModifierStorageValue
     @AppStorage(DefaultsKey.windowLayoutHiddenActions) private var hiddenActionsRaw = ""
     @State private var editingActions = false
 
@@ -101,6 +103,30 @@ struct PanelWindowLayoutView: View {
                 }
             if shortcutsEnabled {
                 Text(text.shortcutsCaption)
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Divider()
+            Toggle(text.gestureEnable, isOn: $gestureEnabled)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
+                .font(.system(size: 10.5, weight: .medium))
+                .onChange(of: gestureEnabled) { _, _ in
+                    WindowLayoutService.shared.syncWithPreferences()
+                }
+            if gestureEnabled {
+                WindowGestureModifierPicker(storageValue: $gestureModifiers,
+                                            title: text.gestureModifiers,
+                                            compact: true)
+                    .onChange(of: gestureModifiers) { _, _ in
+                        WindowLayoutService.shared.syncWithPreferences()
+                    }
+                WindowGestureHints(modifierStorage: gestureModifiers,
+                                   moveText: text.gestureMove,
+                                   resizeText: text.gestureResize,
+                                   compact: true)
+                Text(text.gestureResizeHint)
                     .font(.system(size: 9.5))
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)

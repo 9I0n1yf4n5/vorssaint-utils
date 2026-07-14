@@ -227,6 +227,7 @@ private struct FeatureHubRow: View {
         switch feature.energyProfile {
         case .idle: return hub.energyIdle
         case .mouse: return hub.energyMouse
+        case .pointer: return hub.energyPointer
         case .keyboard: return hub.energyKeyboard
         case .inputs: return hub.energyInputs
         case .periodic: return hub.energyPeriodic

@@ -16,12 +16,12 @@ You can review or change every grant in System Settings, under Privacy and Secur
 
 ## Accessibility
 
-**Why it comes up.** macOS keeps control of the keyboard and mouse, along with the ability to read other apps' windows, behind the Accessibility permission.
+**Why it comes up.** macOS keeps control of keyboard and pointer input, along with the ability to read other apps' windows, behind the Accessibility permission.
 
 **What uses it.**
 
 - **Scroll direction inverter**, which flips the mouse wheel.
-- **Window Layout**, which moves the active window when you use a layout action or shortcut.
+- **Window Layout**, which moves or resizes windows when you use a layout action, shortcut or optional trackpad or mouse gesture.
 - **App and window switcher**, which captures the switcher hotkey and reads the window list.
 - **Dock Preview**, which reads Dock items and brings windows forward for a temporary peek.
 - **Dock click to minimize**, which spots clicks on the Dock icon of the active app and minimizes or restores its windows.

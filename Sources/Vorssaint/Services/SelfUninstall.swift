@@ -65,6 +65,7 @@ enum SelfUninstall {
         SmoothScrollService.shared.suspend()
         MouseNavigationService.shared.suspend()
         WindowMaximizer.shared.stop()
+        WindowLayoutService.shared.suspend()
         AppSwitcher.shared.suspend()
         DockPreviewService.shared.stop()
         AutoQuitService.shared.suspend()

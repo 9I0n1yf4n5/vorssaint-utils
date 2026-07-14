@@ -194,6 +194,15 @@ struct MetricsTests {
                    && !layoutStrings.bottomCenterSixth.isEmpty
                    && !layoutStrings.bottomRightSixth.isEmpty,
                    "\(language.rawValue) window sixth layout labels are localized")
+            expect(!layoutStrings.gestureSection.isEmpty
+                   && !layoutStrings.gestureEnable.isEmpty
+                   && !layoutStrings.gestureCaption.isEmpty
+                   && !layoutStrings.gestureModifiers.isEmpty
+                   && !layoutStrings.gestureMove.isEmpty
+                   && !layoutStrings.gestureResize.isEmpty
+                   && !layoutStrings.gestureResizeHint.isEmpty
+                   && !layoutStrings.gestureRaiseWindow.isEmpty,
+                   "\(language.rawValue) window gesture controls are localized")
             let alertStrings = FeatureStrings.monitorAlerts(language)
             expectFormat(alertStrings.cpuBodyFormat, ["d"], "\(language.rawValue) CPU alert format")
             expectFormat(alertStrings.cpuTemperatureBodyFormat, ["d"],
@@ -1264,6 +1273,12 @@ struct MetricsTests {
                "battery time is shown in the Power panel by default")
         expect(registeredDefaults[DefaultsKey.windowLayoutShortcutsEnabled] as? Bool == false,
                "window layout shortcuts stay off until enabled")
+        expect(registeredDefaults[DefaultsKey.windowGestureEnabled] as? Bool == false,
+               "window move and resize gestures are opt-in")
+        expect(registeredDefaults[DefaultsKey.windowGestureModifiers] as? String == "control+command",
+               "window gestures start with the deliberate control-command chord")
+        expect(registeredDefaults[DefaultsKey.windowGestureRaiseWindow] as? Bool == false,
+               "window gestures do not change app focus unless requested")
         let assignedLayoutShortcutKeys = [
             DefaultsKey.windowLayoutShortcutLeft,
             DefaultsKey.windowLayoutShortcutRight,
@@ -1980,6 +1995,89 @@ struct MetricsTests {
                                                  visibleFrame: visibleFrame)
                == CGRect(x: 540, y: 40, width: 900, height: 620),
                "window layout bottom right anchors the accepted app size to both requested edges")
+
+        // MARK: Window move and resize gestures
+
+        expect(WindowGestureSupport.modifiers(from: nil) == [.control, .command],
+               "window gestures fall back to control-command")
+        expect(WindowGestureSupport.modifiers(from: "option+shift") == [.option],
+               "shift stays reserved for trackpad resizing")
+        expect(WindowGestureSupport.modifiers(from: "shift") == [.control, .command],
+               "shift alone never takes over ordinary system dragging")
+        expect(WindowGestureSupport.modifiers(from: "invalid") == [.control, .command],
+               "corrupt window gesture modifiers fall back safely")
+        expect(WindowGestureSupport.storageValue(for: [.command, .control]) == "control+command",
+               "window gesture modifiers serialize in stable order")
+        expect(WindowGestureSupport.modifiersMatch(eventFlags: [.maskControl, .maskCommand],
+                                                   expected: [.control, .command]),
+               "window gestures match their exact modifier chord")
+        expect(!WindowGestureSupport.modifiersMatch(eventFlags: [.maskControl, .maskCommand, .maskShift],
+                                                    expected: [.control, .command]),
+               "the resize chord does not trigger window movement")
+        let resizeModifiers = WindowGestureSupport.resizeModifiers(from: [.control, .command])
+        expect(resizeModifiers == [.control, .shift, .command],
+               "trackpad resizing adds shift to the chosen move chord")
+        expect(WindowGestureSupport.modifiersMatch(eventFlags: [.maskControl, .maskCommand, .maskShift],
+                                                   expected: resizeModifiers),
+               "trackpad resizing matches its exact primary-drag chord")
+        expect(!WindowGestureSupport.modifiersMatch(eventFlags: [.maskControl, .maskCommand, .maskShift, .maskAlternate],
+                                                    expected: resizeModifiers),
+               "unexpected extra modifiers do not trigger trackpad resizing")
+        expect(WindowGestureSupport.movedOrigin(from: CGPoint(x: 100, y: 80),
+                                                pointerStart: CGPoint(x: 300, y: 200),
+                                                pointerNow: CGPoint(x: 345, y: 175))
+               == CGPoint(x: 145, y: 55),
+               "window movement follows the full pointer delta")
+        let gestureFrame = CGRect(x: 100, y: 80, width: 600, height: 420)
+        expect(WindowGestureSupport.resizeEdges(at: CGPoint(x: 110, y: 90), in: gestureFrame)
+               == [.left, .top],
+               "a top-left press resizes from both matching edges")
+        expect(WindowGestureSupport.resizeEdges(at: CGPoint(x: 400, y: 90), in: gestureFrame)
+               == [.top],
+               "a top-center press resizes only the top edge")
+        expect(!WindowGestureSupport.resizeEdges(at: CGPoint(x: 400, y: 290), in: gestureFrame).isEmpty,
+               "the center region always chooses a usable nearest edge")
+        expect(WindowGestureSupport.resizedFrame(from: gestureFrame,
+                                                 pointerStart: CGPoint(x: 110, y: 90),
+                                                 pointerNow: CGPoint(x: 160, y: 120),
+                                                 edges: [.left, .top])
+               == CGRect(x: 150, y: 110, width: 550, height: 390),
+               "top-left resizing keeps the opposite corner anchored")
+        expect(WindowGestureSupport.resizedFrame(from: gestureFrame,
+                                                 pointerStart: CGPoint(x: 690, y: 490),
+                                                 pointerNow: CGPoint(x: 760, y: 540),
+                                                 edges: [.right, .bottom])
+               == CGRect(x: 100, y: 80, width: 670, height: 470),
+               "bottom-right resizing grows in both axes")
+        expect(WindowGestureSupport.resizedFrame(from: gestureFrame,
+                                                 pointerStart: CGPoint(x: 100, y: 80),
+                                                 pointerNow: CGPoint(x: 900, y: 700),
+                                                 edges: [.left, .top])
+               == CGRect(x: 580, y: 420, width: 120, height: 80),
+               "gesture minimum size keeps the far corner fixed")
+        expect(WindowGestureSupport.anchoredOrigin(original: gestureFrame,
+                                                   requestedOrigin: CGPoint(x: 580, y: 420),
+                                                   acceptedSize: CGSize(width: 260, height: 180),
+                                                   edges: [.left, .top])
+               == CGPoint(x: 440, y: 320),
+               "an app-specific minimum size keeps the opposite corner anchored")
+        expect(WindowGestureSupport.anchoredOrigin(original: gestureFrame,
+                                                   requestedOrigin: gestureFrame.origin,
+                                                   acceptedSize: CGSize(width: 760, height: 540),
+                                                   edges: [.right, .bottom])
+               == gestureFrame.origin,
+               "right and bottom resizing keep the original window origin")
+        expect(WindowGestureSupport.anchoredOriginIfNeeded(original: gestureFrame,
+                                                           requestedOrigin: gestureFrame.origin,
+                                                           acceptedSize: CGSize(width: 760, height: 540),
+                                                           edges: [.right, .bottom]) == nil,
+               "right and bottom resizing never adds a redundant position mutation")
+        expect(WindowGestureSupport.anchoredOriginIfNeeded(original: gestureFrame,
+                                                           requestedOrigin: CGPoint(x: 580, y: 420),
+                                                           acceptedSize: CGSize(width: 260, height: 180),
+                                                           edges: [.left, .top])
+               == CGPoint(x: 440, y: 320),
+               "left and top resizing reanchors only after the accepted size is known")
 
         expect(MediaImageFormat.sanitized("pdf") == .pdf,
                "Image converter accepts the PDF format")
@@ -4559,7 +4657,8 @@ struct MetricsTests {
         expect(FeaturePreset.windows.features.allSatisfy { $0.group == .windowsDock },
                "the windows preset stays inside the windows and Dock group")
         expect(FeaturePreset.battery.features.allSatisfy {
-                   $0.energyProfile != .mouse && $0.energyProfile != .keyboard
+                   $0.energyProfile != .mouse && $0.energyProfile != .pointer
+                       && $0.energyProfile != .keyboard
                        && $0.energyProfile != .inputs
                },
                "battery and quiet installs nothing that listens to input")
@@ -4582,6 +4681,18 @@ struct MetricsTests {
                 && AppFeature.keepAwake.energyProfile == .idle
                 && AppFeature.brightness.energyProfile == .idle,
                "energy badges tell the honest mechanism per feature")
+        let previousWindowGestureEnergy = UserDefaults.standard.object(
+            forKey: DefaultsKey.windowGestureEnabled
+        )
+        UserDefaults.standard.set(true, forKey: DefaultsKey.windowGestureEnabled)
+        expect(AppFeature.windowLayout.energyProfile == .pointer,
+               "window dragging reports trackpad and mouse pointer input")
+        if let previousWindowGestureEnergy {
+            UserDefaults.standard.set(previousWindowGestureEnergy,
+                                      forKey: DefaultsKey.windowGestureEnabled)
+        } else {
+            UserDefaults.standard.removeObject(forKey: DefaultsKey.windowGestureEnabled)
+        }
 
         // MARK: Settings page visibility
 
@@ -4883,6 +4994,10 @@ struct MetricsTests {
         expect(backupKeys.contains(DefaultsKey.textSnippets)
                 && backupKeys.contains(DefaultsKey.textSnippetsEnabled),
                "snippets travel with the settings backup")
+        expect(backupKeys.contains(DefaultsKey.windowGestureEnabled)
+                && backupKeys.contains(DefaultsKey.windowGestureModifiers)
+                && backupKeys.contains(DefaultsKey.windowGestureRaiseWindow),
+               "window gesture choices travel with the settings backup")
         expect(backupKeys.contains(DefaultsKey.panelShowToggles)
                 && backupKeys.contains(DefaultsKey.panelToggleOrder)
                 && backupKeys.contains(DefaultsKey.panelToggleDarkMode),
