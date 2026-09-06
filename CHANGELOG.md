@@ -7,7 +7,10 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Summary
-Dock previews, click actions and focus follows mouse work through overlays that let pointer input pass through. Video editor presets now keep their added images.
+Dock previews, click actions and focus follows mouse work through overlays that let pointer input pass through. Video editor presets keep their added images, and extra brightness can be toggled from the Displays panel.
+
+### Changed
+- Extra brightness can be switched on and off directly from the Displays panel.
 
 ### Fixed
 - Dock previews and click actions work while recording the screen or using overlays that let pointer input pass through.
