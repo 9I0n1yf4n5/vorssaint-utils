@@ -7,11 +7,12 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Summary
-Dock previews, click actions and focus follows mouse work through overlays that let pointer input pass through.
+Dock previews, click actions and focus follows mouse work through overlays that let pointer input pass through. Video editor presets now keep their added images.
 
 ### Fixed
 - Dock previews and click actions work while recording the screen or using overlays that let pointer input pass through.
 - Focus follows mouse keeps working through recording overlays while respecting windows that actually receive input.
+- Video editor presets restore added images with their position, size and opacity for the whole video, independently of the original recording.
 
 ## [3.3.4] - 2026-09-06
 
