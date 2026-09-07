@@ -3509,15 +3509,15 @@ struct MetricsTests {
         // decision above is made consciously, never by omission.
         let releasePlist = NSDictionary(contentsOfFile: "Resources/Info.plist")
         let plistVersion = (releasePlist?["CFBundleShortVersionString"] as? String) ?? ""
-        expect(plistVersion == "3.3.4",
+        expect(plistVersion == "3.3.5",
                "bumping the app version requires re-deciding the support prompt pin above")
         let plistBuild = (releasePlist?["CFBundleVersion"] as? String) ?? ""
-        expect(plistBuild == "85",
+        expect(plistBuild == "86",
                "every app version needs its own incremented bundle build")
         expect(SupportUpdateIntroInfo.releaseVersion == "3.3.2",
                "the support prompt remains deliberately pinned to 3.3.2")
         // 3.3.3 adds several headline features, so the tour is re-curated
-        // around only what this update genuinely introduces. 3.3.4 patches
+        // around only what this update introduces. The hotfix releases patch
         // that release: whoever skipped 3.3.3 still gets its tour once, and
         // whoever already saw it does not see it again.
         expect(UpdateHighlightsInfo.releaseVersion == "3.3.3",
@@ -3536,6 +3536,12 @@ struct MetricsTests {
                && !UpdateHighlightsInfo.shouldShow(appVersion: "3.4.0", lastSeenVersion: nil)
                && !UpdateHighlightsInfo.shouldShow(appVersion: "4.0.0", lastSeenVersion: nil),
                "highlights tour never leaks into another feature release")
+        expect(UpdateHighlightsInfo.shouldShow(appVersion: "3.3.5", lastSeenVersion: "3.3.2"),
+               "updating directly from 3.3.2 to 3.3.5 shows the feature tour that was skipped")
+        expect(UpdateHighlightsInfo.shouldShow(appVersion: "3.3.5", lastSeenVersion: nil),
+               "3.3.5 shows the feature tour when no earlier tour was recorded")
+        expect(!UpdateHighlightsInfo.shouldShow(appVersion: "3.3.5", lastSeenVersion: "3.3.3"),
+               "a tour already seen in 3.3.3 or its hotfixes does not repeat in 3.3.5")
         expect(FileManager.default.fileExists(atPath: "Resources/Images/highlights-windowlayout.png")
                && FileManager.default.fileExists(atPath: "Resources/Images/highlights-quitprotection.png")
                && FileManager.default.fileExists(atPath: "Resources/Images/highlights-recorderblur.png"),

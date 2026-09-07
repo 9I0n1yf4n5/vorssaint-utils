@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [3.3.5]
+## [3.3.5] - 2026-09-06
 
 ### Summary
 Hotfix update for Dock actions, window focus, video presets, temperature readings and the menu bar icon. Extra brightness can now be toggled from the Displays panel, and the full feature update is included below.
